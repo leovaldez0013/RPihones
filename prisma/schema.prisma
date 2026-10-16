@@ -1,0 +1,767 @@
+// Schema do RP iPhones.
+// - Valores monetários em centavos (Int).
+// - Status/tipos como String validados por constantes em src/domain/constants.ts
+//   (mantém o schema idêntico entre SQLite e PostgreSQL).
+// - Campos JSON armazenados como String serializada.
+// - Soft delete via deletedAt.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────────── Acesso ─────────────────────────────
+
+model User {
+  id               String    @id @default(cuid())
+  name             String
+  email            String    @unique
+  passwordHash     String
+  role             String    @default("VENDEDOR") // ADMIN | GERENTE | VENDEDOR | TECNICO
+  commissionPct    Float     @default(0) // % padrão de comissão do vendedor
+  discountLimitPct Float     @default(5) // desconto máximo sem aprovação
+  phone            String?
+  active           Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+
+  auditLogs       AuditLog[]
+  sales           Sale[]           @relation("SaleSeller")
+  approvedSales   Sale[]           @relation("SaleApprover")
+  serviceOrders   ServiceOrder[]   @relation("SOTechnician")
+  cashSessions    CashSession[]
+  tasks           Task[]
+  notifications   Notification[]
+  imeiChecks      ImeiCheck[]
+  deviceEvents    DeviceEvent[]
+  stockMovements  StockMovement[]
+  commissionRules CommissionRule[]
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String // ex.: sale.complete, device.price_change
+  entity    String
+  entityId  String?
+  summary   String?
+  before    String? // JSON
+  after     String? // JSON
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String? // null = todos
+  user      User?     @relation(fields: [userId], references: [id])
+  type      String // ORDER_MATCH | STOCK_LOW | IMEI_BLOCKED | INFO
+  title     String
+  body      String?
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+// ─────────────────────────── Configurações ───────────────────────────
+
+model StoreSettings {
+  id                   String   @id @default("default")
+  name                 String   @default("Minha Loja")
+  legalName            String?
+  cnpj                 String?
+  phone                String?
+  whatsapp             String?
+  email                String?
+  instagram            String?
+  website              String?
+  logoUrl              String?
+  cep                  String?
+  street               String?
+  number               String?
+  complement           String?
+  district             String?
+  city                 String?
+  state                String?
+  staleStockDays       Int      @default(45)
+  tradeInDefaultStatus String   @default("EM_AVALIACAO") // EM_AVALIACAO | DISPONIVEL
+  imeiProvider         String   @default("none") // none | mock | http
+  imeiApiUrl           String?
+  imeiApiKey           String?
+  googleReviewUrl      String?
+  postSaleDays         Int      @default(7)
+  warrantyAlertDays    Int      @default(15)
+  updatedAt            DateTime @updatedAt
+}
+
+model WarrantyRule {
+  id        String  @id @default(cuid())
+  condition String  @unique // NOVO | SEMINOVO | VITRINE | RECONDICIONADO | ACESSORIO | SERVICO
+  days      Int
+  clauses   String? // cláusulas de exclusão (texto)
+}
+
+model CardFee {
+  id              String           @id @default(cuid())
+  accountId       String
+  account         FinancialAccount @relation(fields: [accountId], references: [id])
+  brand           String           @default("TODAS") // VISA | MASTER | ELO | AMEX | HIPER | TODAS
+  method          String // DEBITO | CREDITO
+  installments    Int              @default(1)
+  feePct          Float // taxa da maquininha cobrada da loja
+  customerRatePct Float            @default(0) // juros repassados ao cliente (total, %)
+  settlementDays  Int              @default(30)
+
+  @@unique([accountId, brand, method, installments])
+}
+
+model TradeInPrice {
+  id        String      @id @default(cuid())
+  modelId   String
+  model     DeviceModel @relation(fields: [modelId], references: [id])
+  capacity  String
+  condition String      @default("SEMINOVO")
+  baseValue Int // centavos
+  updatedAt DateTime    @updatedAt
+
+  @@unique([modelId, capacity, condition])
+}
+
+// Ajustes globais de avaliação (bateria e grade) em String JSON no singleton abaixo
+model TradeInAdjustments {
+  id        String @id @default("default")
+  battery   String // JSON [{min, max, pct}]
+  grade     String // JSON {"A+":0,"A":-5,...}
+  checklist String // JSON {item: pct desconto se falhar}
+}
+
+model CommissionRule {
+  id       String  @id @default(cuid())
+  userId   String?
+  user     User?   @relation(fields: [userId], references: [id])
+  category String // APARELHO_NOVO | APARELHO_SEMINOVO | ACESSORIO | SERVICO
+  pct      Float
+
+  @@unique([userId, category])
+}
+
+model DocumentTemplate {
+  id        String     @id @default(cuid())
+  type      String     @unique // RECIBO | GARANTIA | TERMO_TROCA | ENCOMENDA | OS_ENTRADA | OS_ENTREGA | ORCAMENTO
+  name      String
+  content   String // markdown com {{variaveis}}
+  updatedAt DateTime   @updatedAt
+  documents Document[]
+}
+
+model MessageTemplate {
+  id        String   @id @default(cuid())
+  key       String   @unique // ANIVERSARIO | POS_VENDA | GARANTIA | UPGRADE | REVIEW | ...
+  name      String
+  content   String
+  active    Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+}
+
+model Sequence {
+  key   String @id // SALE | SO | ORDER | PURCHASE | DOC_RECIBO ...
+  value Int    @default(0)
+}
+
+// ─────────────────────────── Catálogo ───────────────────────────
+
+model DeviceModel {
+  id            String         @id @default(cuid())
+  name          String         @unique // "iPhone 15 Pro Max"
+  family        String // "iPhone 15"
+  year          Int
+  colors        String // JSON string[]
+  capacities    String // JSON string[] ["128GB","256GB"]
+  sortOrder     Int            @default(0)
+  active        Boolean        @default(true)
+  devices       Device[]
+  tacs          TacEntry[]
+  tradeInPrices TradeInPrice[]
+}
+
+model TacEntry {
+  tac     String      @id // 8 dígitos
+  modelId String
+  model   DeviceModel @relation(fields: [modelId], references: [id])
+  note    String?
+}
+
+// ─────────────────────────── Estoque ───────────────────────────
+
+model Device {
+  id                 String      @id @default(cuid())
+  imei               String      @unique
+  imei2              String?
+  serial             String?
+  modelId            String
+  model              DeviceModel @relation(fields: [modelId], references: [id])
+  capacity           String
+  color              String
+  condition          String // NOVO | SEMINOVO | VITRINE | RECONDICIONADO
+  batteryHealth      Int?
+  grade              String? // A+ | A | B | C
+  notes              String?
+  photos             String      @default("[]") // JSON string[]
+  origin             String      @default("COMPRA") // COMPRA | TROCA | COMPRA_PF | AJUSTE
+  supplierId         String?
+  supplier           Supplier?   @relation(fields: [supplierId], references: [id])
+  acquisitionCost    Int         @default(0)
+  serviceCost        Int         @default(0) // soma das OS internas
+  salePrice          Int         @default(0)
+  entryDate          DateTime    @default(now())
+  appleWarrantyUntil DateTime?
+  status             String      @default("DISPONIVEL") // DISPONIVEL | RESERVADO | VENDIDO | EM_MANUTENCAO | EM_AVALIACAO | DEVOLVIDO
+  reservedForOrderId String?
+  reservedForSaleId  String?
+  reservedCustomerId String?
+  purchaseItemId     String?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  deletedAt          DateTime?
+
+  events        DeviceEvent[]
+  imeiChecks    ImeiCheck[]
+  saleItems     SaleItem[]
+  serviceOrders ServiceOrder[]
+  tradeIn       TradeIn?
+  usedPurchase  UsedDevicePurchase?
+
+  @@index([status])
+  @@index([modelId])
+}
+
+model DeviceEvent {
+  id          String   @id @default(cuid())
+  deviceId    String
+  device      Device   @relation(fields: [deviceId], references: [id])
+  type        String // ENTRADA | TROCA | OS_ABERTA | OS_CONCLUIDA | VENDA | DEVOLUCAO | RESERVA | PRECO | IMEI_CHECK | AJUSTE
+  description String
+  refType     String?
+  refId       String?
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([deviceId])
+}
+
+model ImeiCheck {
+  id          String   @id @default(cuid())
+  imei        String
+  deviceId    String?
+  device      Device?  @relation(fields: [deviceId], references: [id])
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  provider    String
+  luhnValid   Boolean
+  tacModel    String?
+  blacklisted Boolean?
+  findMyOn    Boolean?
+  carrier     String?
+  warranty    String?
+  raw         String? // JSON
+  createdAt   DateTime @default(now())
+
+  @@index([imei])
+}
+
+model Accessory {
+  id            String    @id @default(cuid())
+  sku           String    @unique
+  barcode       String?   @unique
+  name          String
+  category      String // CAPA | PELICULA | CARREGADOR | CABO | FONE | AIRPODS | WATCH | PECA | OUTRO
+  brand         String?
+  compatibility String    @default("[]") // JSON string[] de nomes de modelos
+  quantity      Int       @default(0)
+  cost          Int       @default(0)
+  price         Int       @default(0)
+  minStock      Int       @default(0)
+  isPart        Boolean   @default(false) // peça para OS
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  movements     StockMovement[]
+  saleItems     SaleItem[]
+  purchaseItems PurchaseItem[]
+  soParts       ServiceOrderPart[]
+}
+
+model StockMovement {
+  id          String    @id @default(cuid())
+  accessoryId String
+  accessory   Accessory @relation(fields: [accessoryId], references: [id])
+  type        String // ENTRADA | SAIDA | AJUSTE | PERDA
+  quantity    Int // positivo entra, negativo sai
+  unitCost    Int?
+  reason      String?
+  refType     String? // VENDA | COMPRA | OS | MANUAL
+  refId       String?
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id])
+  createdAt   DateTime  @default(now())
+
+  @@index([accessoryId])
+}
+
+// ─────────────────────────── Pessoas ───────────────────────────
+
+model Customer {
+  id               String    @id @default(cuid())
+  name             String
+  cpf              String?   @unique
+  phone            String?
+  email            String?
+  birthDate        DateTime?
+  cep              String?
+  street           String?
+  number           String?
+  complement       String?
+  district         String?
+  city             String?
+  state            String?
+  notes            String?
+  marketingConsent Boolean   @default(false)
+  consentAt        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+
+  sales            Sale[]
+  tradeIns         TradeIn[]
+  orders           Order[]
+  serviceOrders    ServiceOrder[]
+  usedPurchases    UsedDevicePurchase[]
+  tasks            Task[]
+  campaignSends    CampaignSend[]
+  financialEntries FinancialEntry[]
+
+  @@index([name])
+  @@index([phone])
+}
+
+model Supplier {
+  id        String    @id @default(cuid())
+  kind      String    @default("PJ") // PJ | PF
+  name      String
+  document  String?   @unique // CPF ou CNPJ
+  phone     String?
+  email     String?
+  contact   String?
+  cep       String?
+  street    String?
+  number    String?
+  district  String?
+  city      String?
+  state     String?
+  notes     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  devices          Device[]
+  purchases        PurchaseOrder[]
+  financialEntries FinancialEntry[]
+}
+
+// ─────────────────────────── Compras ───────────────────────────
+
+model PurchaseOrder {
+  id          String    @id @default(cuid())
+  number      Int       @unique
+  supplierId  String
+  supplier    Supplier  @relation(fields: [supplierId], references: [id])
+  status      String    @default("RASCUNHO") // RASCUNHO | PEDIDO | RECEBIDO_PARCIAL | RECEBIDO | CANCELADO
+  orderedAt   DateTime?
+  expectedAt  DateTime?
+  dueDate     DateTime? // vencimento da conta a pagar
+  notes       String?
+  total       Int       @default(0)
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  items PurchaseItem[]
+}
+
+model PurchaseItem {
+  id          String        @id @default(cuid())
+  purchaseId  String
+  purchase    PurchaseOrder @relation(fields: [purchaseId], references: [id])
+  kind        String // DEVICE | ACCESSORY
+  // aparelho
+  modelId     String?
+  capacity    String?
+  color       String?
+  condition   String?
+  // acessório
+  accessoryId String?
+  accessory   Accessory?    @relation(fields: [accessoryId], references: [id])
+  description String
+  quantity    Int           @default(1)
+  receivedQty Int           @default(0)
+  unitCost    Int
+  salePrice   Int           @default(0)
+}
+
+model UsedDevicePurchase {
+  id            String   @id @default(cuid())
+  number        Int      @unique
+  customerId    String
+  customer      Customer @relation(fields: [customerId], references: [id])
+  deviceId      String   @unique
+  device        Device   @relation(fields: [deviceId], references: [id])
+  value         Int
+  paymentMethod String
+  checklist     String   @default("{}")
+  createdById   String?
+  createdAt     DateTime @default(now())
+}
+
+// ─────────────────────────── Vendas ───────────────────────────
+
+model Sale {
+  id           String    @id @default(cuid())
+  number       Int       @unique
+  status       String    @default("ORCAMENTO") // ORCAMENTO | CONCLUIDA | CANCELADA | DEVOLVIDA
+  customerId   String?
+  customer     Customer? @relation(fields: [customerId], references: [id])
+  sellerId     String
+  seller       User      @relation("SaleSeller", fields: [sellerId], references: [id])
+  approvedById String?
+  approvedBy   User?     @relation("SaleApprover", fields: [approvedById], references: [id])
+  subtotal     Int       @default(0) // soma preço cheio
+  itemDiscount Int       @default(0)
+  discount     Int       @default(0) // desconto no total
+  interest     Int       @default(0) // juros cobrados do cliente (parcelado)
+  total        Int       @default(0) // subtotal - descontos (sem juros)
+  cost         Int       @default(0) // custo real dos itens (snapshot)
+  cardFees     Int       @default(0)
+  commission   Int       @default(0)
+  notes        String?
+  orderId      String?   @unique
+  order        Order?    @relation(fields: [orderId], references: [id])
+  validUntil   DateTime? // orçamento
+  completedAt  DateTime?
+  canceledAt   DateTime?
+  cancelReason String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  items     SaleItem[]
+  payments  SalePayment[]
+  tradeIns  TradeIn[]
+  documents Document[]
+
+  @@index([status, completedAt])
+}
+
+model SaleItem {
+  id           String     @id @default(cuid())
+  saleId       String
+  sale         Sale       @relation(fields: [saleId], references: [id])
+  kind         String // DEVICE | ACCESSORY | SERVICE
+  deviceId     String?
+  device       Device?    @relation(fields: [deviceId], references: [id])
+  accessoryId  String?
+  accessory    Accessory? @relation(fields: [accessoryId], references: [id])
+  description  String
+  quantity     Int        @default(1)
+  unitPrice    Int
+  discount     Int        @default(0) // total do item
+  unitCost     Int        @default(0) // custo real no momento da venda
+  warrantyDays Int        @default(0)
+  active       Boolean    @default(true) // false após devolução/cancelamento
+
+  @@index([deviceId, active])
+}
+
+model SalePayment {
+  id           String            @id @default(cuid())
+  saleId       String
+  sale         Sale              @relation(fields: [saleId], references: [id])
+  method       String // DINHEIRO | PIX | DEBITO | CREDITO | CREDITO_PARCELADO | BOLETO | CREDIARIO | TROCA | SINAL
+  amount       Int // abatido do total (sem juros)
+  installments Int               @default(1)
+  interest     Int               @default(0) // juros cobrado do cliente
+  feePct       Float             @default(0)
+  feeAmount    Int               @default(0)
+  brand        String?
+  accountId    String?
+  account      FinancialAccount? @relation(fields: [accountId], references: [id])
+  tradeInId    String?           @unique
+  tradeIn      TradeIn?          @relation(fields: [tradeInId], references: [id])
+  createdAt    DateTime          @default(now())
+}
+
+model TradeIn {
+  id             String       @id @default(cuid())
+  saleId         String?
+  sale           Sale?        @relation(fields: [saleId], references: [id])
+  customerId     String?
+  customer       Customer?    @relation(fields: [customerId], references: [id])
+  imei           String
+  imei2          String?
+  serial         String?
+  modelId        String
+  capacity       String
+  color          String
+  batteryHealth  Int?
+  grade          String?
+  checklist      String       @default("{}") // JSON {item: boolean}
+  photos         String       @default("[]")
+  notes          String?
+  suggestedValue Int
+  finalValue     Int
+  deviceId       String?      @unique
+  device         Device?      @relation(fields: [deviceId], references: [id])
+  createdAt      DateTime     @default(now())
+  payment        SalePayment?
+}
+
+// ─────────────────────────── Encomendas ───────────────────────────
+
+model Order {
+  id            String    @id @default(cuid())
+  number        Int       @unique
+  customerId    String
+  customer      Customer  @relation(fields: [customerId], references: [id])
+  modelId       String?
+  modelName     String
+  capacity      String?
+  color         String?
+  condition     String?
+  minPrice      Int?
+  maxPrice      Int?
+  deposit       Int       @default(0)
+  depositMethod String?
+  status        String    @default("ABERTA") // ABERTA | EM_BUSCA | CHEGOU | CLIENTE_AVISADO | ENTREGUE | CANCELADA
+  deviceId      String?
+  notes         String?
+  dueDate       DateTime?
+  createdById   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  sale Sale?
+}
+
+// ─────────────────────────── Ordens de serviço ───────────────────────────
+
+model ServiceOrder {
+  id                String    @id @default(cuid())
+  number            Int       @unique
+  kind              String    @default("INTERNA") // INTERNA | CLIENTE
+  deviceId          String?
+  device            Device?   @relation(fields: [deviceId], references: [id])
+  deviceDescription String? // aparelho de cliente fora do estoque
+  imei              String?
+  customerId        String?
+  customer          Customer? @relation(fields: [customerId], references: [id])
+  technicianId      String?
+  technician        User?     @relation("SOTechnician", fields: [technicianId], references: [id])
+  problem           String
+  services          String? // serviços a executar (troca de bateria, tela...)
+  checklist         String    @default("{}")
+  photos            String    @default("[]")
+  diagnosis         String?
+  laborCost         Int       @default(0) // custo da mão de obra (interno)
+  price             Int       @default(0) // valor cobrado do cliente
+  priority          String    @default("NORMAL") // BAIXA | NORMAL | ALTA | URGENTE
+  status            String    @default("ABERTA") // ABERTA | DIAGNOSTICO | AGUARDANDO_PECA | EM_REPARO | PRONTA | ENTREGUE | CANCELADA
+  position          Int       @default(0)
+  dueDate           DateTime?
+  deliveredAt       DateTime?
+  createdById       String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
+
+  parts     ServiceOrderPart[]
+  documents Document[]
+}
+
+model ServiceOrderPart {
+  id             String       @id @default(cuid())
+  serviceOrderId String
+  serviceOrder   ServiceOrder @relation(fields: [serviceOrderId], references: [id])
+  accessoryId    String
+  accessory      Accessory    @relation(fields: [accessoryId], references: [id])
+  quantity       Int
+  unitCost       Int
+  unitPrice      Int          @default(0)
+}
+
+// ─────────────────────────── Documentos ───────────────────────────
+
+model Document {
+  id             String            @id @default(cuid())
+  type           String
+  number         Int
+  title          String
+  templateId     String?
+  template       DocumentTemplate? @relation(fields: [templateId], references: [id])
+  content        String // markdown já renderizado
+  data           String? // JSON do contexto usado
+  signature      String? // data URL PNG
+  signedAt       DateTime?
+  saleId         String?
+  sale           Sale?             @relation(fields: [saleId], references: [id])
+  serviceOrderId String?
+  serviceOrder   ServiceOrder?     @relation(fields: [serviceOrderId], references: [id])
+  orderId        String?
+  tradeInId      String?
+  usedPurchaseId String?
+  customerId     String?
+  createdById    String?
+  createdAt      DateTime          @default(now())
+
+  @@unique([type, number])
+}
+
+// ─────────────────────────── Financeiro ───────────────────────────
+
+model FinancialAccount {
+  id             String    @id @default(cuid())
+  name           String
+  kind           String // CAIXA | BANCO | MAQUININHA
+  initialBalance Int       @default(0)
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  deletedAt      DateTime?
+
+  entries      FinancialEntry[]
+  cardFees     CardFee[]
+  payments     SalePayment[]
+  cashSessions CashSession[]
+}
+
+model Category {
+  id        String     @id @default(cuid())
+  name      String
+  kind      String // RECEITA | DESPESA
+  dreGroup  String // RECEITA_VENDAS | RECEITA_SERVICOS | CMV | TAXAS | COMISSOES | DESPESA_OPERACIONAL | OUTRAS | NAO_OPERACIONAL
+  parentId  String?
+  parent    Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children  Category[] @relation("CategoryTree")
+  system    Boolean    @default(false)
+  deletedAt DateTime?
+
+  entries FinancialEntry[]
+}
+
+model FinancialEntry {
+  id              String            @id @default(cuid())
+  type            String // RECEBER | PAGAR
+  description     String
+  amount          Int // valor bruto
+  netAmount       Int // valor líquido (após taxas) — o que efetivamente entra/sai
+  dueDate         DateTime
+  paidAt          DateTime?
+  status          String            @default("ABERTA") // ABERTA | PAGA | CANCELADA (vencida é derivada)
+  categoryId      String?
+  category        Category?         @relation(fields: [categoryId], references: [id])
+  accountId       String?
+  account         FinancialAccount? @relation(fields: [accountId], references: [id])
+  method          String?
+  customerId      String?
+  customer        Customer?         @relation(fields: [customerId], references: [id])
+  supplierId      String?
+  supplier        Supplier?         @relation(fields: [supplierId], references: [id])
+  originType      String            @default("MANUAL") // VENDA | COMPRA | OS | ENCOMENDA | MANUAL | ESTORNO | CAIXA | COMISSAO
+  originId        String?
+  installment     Int?
+  installments    Int?
+  recurrence      String? // MENSAL | SEMANAL | ANUAL
+  recurrenceGroup String?
+  attachments     String            @default("[]")
+  cashSessionId   String?
+  cashSession     CashSession?      @relation(fields: [cashSessionId], references: [id])
+  notes           String?
+  createdById     String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  deletedAt       DateTime?
+
+  @@index([dueDate])
+  @@index([originType, originId])
+  @@index([status])
+}
+
+model CashSession {
+  id              String           @id @default(cuid())
+  userId          String
+  user            User             @relation(fields: [userId], references: [id])
+  accountId       String
+  account         FinancialAccount @relation(fields: [accountId], references: [id])
+  openedAt        DateTime         @default(now())
+  openingAmount   Int
+  closedAt        DateTime?
+  closingCounted  String? // JSON {metodo: valor informado}
+  closingExpected String? // JSON {metodo: valor apurado}
+  difference      Int?
+  notes           String?
+
+  movements CashMovement[]
+  entries   FinancialEntry[]
+}
+
+model CashMovement {
+  id          String      @id @default(cuid())
+  sessionId   String
+  session     CashSession @relation(fields: [sessionId], references: [id])
+  type        String // SANGRIA | SUPRIMENTO
+  amount      Int
+  reason      String?
+  createdById String?
+  createdAt   DateTime    @default(now())
+}
+
+// ─────────────────────────── Marketing ───────────────────────────
+
+model Task {
+  id         String    @id @default(cuid())
+  key        String?   @unique // idempotência: POS_VENDA:<saleId>, ANIV:<customerId>:<ano>
+  type       String // POS_VENDA | ANIVERSARIO | GARANTIA | UPGRADE | MANUAL
+  title      String
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+  userId     String?
+  user       User?     @relation(fields: [userId], references: [id])
+  refType    String?
+  refId      String?
+  dueDate    DateTime
+  doneAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([dueDate, doneAt])
+}
+
+model CampaignSend {
+  id          String   @id @default(cuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id])
+  templateKey String
+  channel     String   @default("WA_LINK")
+  message     String
+  userId      String?
+  createdAt   DateTime @default(now())
+}
