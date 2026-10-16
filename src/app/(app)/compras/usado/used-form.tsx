@@ -58,7 +58,8 @@ export function UsedPurchaseForm({ catalog, accounts }: { catalog: CatalogItem[]
     });
     setSaving(false);
     if (!res.ok) return toast.error(res.error);
-    toast.success(`Compra nº ${res.data.number} registrada — aparelho no estoque`);
+    toast.success(`Compra nº ${res.data.number} registrada — aparelho no estoque. Colete a assinatura do termo.`);
+    window.open(`/documentos/${res.data.documentId}`, "_blank");
     router.push(`/estoque/aparelhos/${res.data.deviceId}`);
   }
 

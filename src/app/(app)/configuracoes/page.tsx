@@ -7,6 +7,7 @@ import {
   History,
   Smartphone,
   Repeat,
+  FileText,
   ChevronRight,
   type LucideIcon,
 } from "lucide-react";
@@ -24,6 +25,7 @@ const SETTINGS_SECTIONS: Section[] = [
   { href: "/configuracoes/geral", title: "Parâmetros gerais", description: "Alerta de estoque parado, pós-venda, status de aparelho de troca", icon: SlidersHorizontal, permission: "settings.operational" },
   { href: "/configuracoes/catalogo", title: "Catálogo de modelos", description: "Modelos de iPhone, cores, capacidades e tabela TAC", icon: Smartphone, permission: "catalog.edit" },
   { href: "/configuracoes/avaliacao", title: "Avaliação de troca", description: "Tabela modelo × capacidade e ajustes por bateria, grade e checklist", icon: Repeat, permission: "settings.operational" },
+  { href: "/configuracoes/documentos", title: "Modelos de documentos", description: "Recibo, garantia, termo de troca, encomenda, OS e orçamento", icon: FileText, permission: "settings.operational" },
   { href: "/configuracoes/auditoria", title: "Log de auditoria", description: "Quem fez o quê e quando", icon: History, permission: "audit.view" },
 ];
 

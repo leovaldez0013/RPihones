@@ -12,6 +12,7 @@ import { ENTRY_STATUS, PAYMENT_METHOD, SALE_STATUS } from "@/domain/constants";
 import { formatBRL } from "@/domain/money";
 import { formatCPF, formatDate, formatDateTime, formatPhone } from "@/lib/format";
 import { SaleActions } from "./sale-actions";
+import { DocumentsCard } from "@/components/documents/documents-card";
 
 export const metadata: Metadata = { title: "Venda" };
 
@@ -46,6 +47,7 @@ export default async function SalePage({ params, searchParams }: { params: Promi
   const entries = can(user.role, "finance.view")
     ? await db.financialEntry.findMany({ where: { originType: "VENDA", originId: s.id, deletedAt: null }, orderBy: [{ dueDate: "asc" }] })
     : [];
+  const docs = await db.document.findMany({ where: { saleId: s.id }, orderBy: { createdAt: "asc" } });
   const profit = s.total - s.cost - s.cardFees - s.commission;
   const isQuote = s.status === "ORCAMENTO";
 
@@ -200,6 +202,7 @@ export default async function SalePage({ params, searchParams }: { params: Promi
         </div>
 
         <div className="flex flex-col gap-6">
+          <DocumentsCard docs={docs} />
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

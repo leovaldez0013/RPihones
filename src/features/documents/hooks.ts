@@ -1,8 +1,7 @@
-// Geração automática de documentos a partir dos fluxos (implementada na fase de Documentos).
+// Geração automática de documentos chamada pelos fluxos (venda, compra de usado, encomenda, OS).
 import type { Tx } from "@/lib/db";
+import { generateSaleDocs } from "./service";
 
-export async function generateSaleDocuments(_tx: Tx, _saleId: string, _userId: string): Promise<void> {
-  void _tx;
-  void _saleId;
-  void _userId;
+export async function generateSaleDocuments(tx: Tx, saleId: string, userId: string): Promise<void> {
+  await generateSaleDocs(tx, saleId, userId);
 }

@@ -10,7 +10,12 @@ export const authConfig = {
       const isLoggedIn = !!auth?.user;
       const { pathname } = request.nextUrl;
       const isPublic =
-        pathname.startsWith("/login") || pathname.startsWith("/api/auth") || pathname.startsWith("/api/cron");
+        pathname.startsWith("/login") ||
+        pathname.startsWith("/api/auth") ||
+        pathname.startsWith("/api/cron") ||
+        pathname.startsWith("/d/") ||
+        // PDF público exige ?sig= válido (conferido na rota)
+        (pathname.startsWith("/api/documentos/") && request.nextUrl.searchParams.has("sig"));
       // /login decide no servidor se a sessão ainda é válida (usuário ativo no banco)
       if (isPublic) return true;
       return isLoggedIn;

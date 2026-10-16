@@ -9,6 +9,7 @@ import { createDevice, addDeviceEvent } from "@/features/devices/service";
 import { moveAccessory } from "@/features/accessories/service";
 import { createEntry, defaultAccountId } from "@/features/finance/service";
 import { onDeviceAvailable } from "@/features/orders/matching";
+import { generateUsedPurchaseDoc } from "@/features/documents/service";
 import type { purchaseSchema, receiveSchema, usedPurchaseSchema } from "./schemas";
 
 type PurchaseData = z.output<typeof purchaseSchema>;
@@ -249,6 +250,7 @@ export async function buyUsedDevice(tx: Tx, data: UsedData, userId: string) {
     userId,
   });
   await audit(tx, { userId, action: "used_purchase.create", entity: "UsedDevicePurchase", entityId: purchase.id, summary: `Compra de usado nº ${number} de ${customer.name}: ${formatBRL(data.value)}` });
+  const doc = await generateUsedPurchaseDoc(tx, purchase.id, userId);
   if (status === "DISPONIVEL") await onDeviceAvailable(tx, device.id);
-  return { purchase, device };
+  return { purchase, device, documentId: doc.id };
 }

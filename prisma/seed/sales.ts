@@ -7,7 +7,7 @@ import { TRADE_IN_CHECKLIST } from "../../src/domain/constants";
 import { evaluateTradeIn } from "../../src/domain/trade-in";
 import { makeImei } from "../../src/domain/imei";
 import { BASE_PRICE } from "./stock";
-import { addDays, chance, int, pick } from "./util";
+import { addDays, chance, int, pick, rand } from "./util";
 
 const DAY = 86400000;
 
@@ -45,6 +45,7 @@ async function moveSaleTo(saleId: string, when: Date) {
     const due = shift(t.dueDate)!;
     await db.task.update({ where: { id: t.id }, data: { dueDate: due, createdAt: when, doneAt: due < addDays(today, -1) ? due : null } });
   }
+  await db.document.updateMany({ where: { saleId }, data: { createdAt: when } });
   const logs = await db.auditLog.findMany({ where: { entity: "Sale", entityId: saleId } });
   for (const l of logs) await db.auditLog.update({ where: { id: l.id }, data: { createdAt: shift(l.createdAt)! } });
 }
@@ -149,7 +150,7 @@ export async function seedSalesHistory(users: { gerente: string; vendedor1: stri
     }
 
     const payments: Record<string, unknown>[] = [];
-    const r = Math.random();
+    const r = rand();
     if (r < 0.35) payments.push({ method: "PIX", amount: remaining });
     else if (r < 0.65) payments.push({ method: "CREDITO_PARCELADO", amount: remaining, installments: pick([2, 3, 4, 6, 10, 10, 12]), accountId: maquininhaId });
     else if (r < 0.75) payments.push({ method: "CREDITO", amount: remaining, accountId: maquininhaId });

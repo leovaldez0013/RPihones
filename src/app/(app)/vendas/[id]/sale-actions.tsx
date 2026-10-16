@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Ban, Pencil, Undo2 } from "lucide-react";
+import { Ban, FileText, Pencil, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { cancelQuoteAction, cancelSaleAction } from "@/features/sales/actions";
+import { generateQuoteDocAction } from "@/features/documents/actions";
 
 export function SaleActions({
   id,
@@ -26,6 +27,18 @@ export function SaleActions({
   if (status === "ORCAMENTO") {
     return (
       <>
+        <Button
+          variant="outline"
+          size="lg"
+          onClick={async () => {
+            const res = await generateQuoteDocAction({ saleId: id });
+            if (!res.ok) return toast.error(res.error);
+            window.open(`/documentos/${res.data.id}`, "_blank");
+            router.refresh();
+          }}
+        >
+          <FileText /> Gerar orçamento
+        </Button>
         {canEditQuote && (
           <Button asChild size="lg">
             <Link href={`/vendas/nova?orcamento=${id}`}>

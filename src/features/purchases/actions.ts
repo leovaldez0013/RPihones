@@ -38,5 +38,5 @@ export const receivePurchaseAction = action({ schema: receiveSchema, permission:
 export const buyUsedDeviceAction = action({ schema: usedPurchaseSchema, permission: "devices.edit" }, async (data, { user }) => {
   const r = await db.$transaction((tx) => buyUsedDevice(tx, data, user.id));
   revalidatePath("/estoque/aparelhos");
-  return { deviceId: r.device.id, purchaseId: r.purchase.id, number: r.purchase.number };
+  return { deviceId: r.device.id, purchaseId: r.purchase.id, number: r.purchase.number, documentId: r.documentId };
 });
