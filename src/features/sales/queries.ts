@@ -6,7 +6,7 @@ import { getCatalog } from "@/features/devices/queries";
 import { getCardRules } from "./config";
 
 /** Dados que o PDV precisa: taxas, catálogo (troca), vendedores, contas e o orçamento em edição. */
-export async function getPosData(user: SessionUser, opts: { quoteId?: string; customerId?: string }) {
+export async function getPosData(user: SessionUser, opts: { quoteId?: string; customerId?: string; orderId?: string }) {
   const [cardRules, catalog, sellers, me, accounts] = await Promise.all([
     getCardRules(db),
     getCatalog(),
@@ -59,11 +59,28 @@ export async function getPosData(user: SessionUser, opts: { quoteId?: string; cu
     }
   }
 
-  let customer = quote?.customer ?? null;
+  let order = null;
+  if (opts.orderId) {
+    const o = await db.order.findUnique({ where: { id: opts.orderId }, include: { customer: true } });
+    if (o && !o.deletedAt && !["ENTREGUE", "CANCELADA"].includes(o.status)) {
+      const d = o.deviceId ? await db.device.findUnique({ where: { id: o.deviceId }, include: { model: true } }) : null;
+      order = {
+        id: o.id,
+        number: o.number,
+        deposit: o.deposit,
+        customer: { id: o.customer.id, name: o.customer.name, cpf: o.customer.cpf, phone: o.customer.phone },
+        item: d
+          ? { kind: "DEVICE" as const, refId: d.id, title: `${d.model.name} ${d.capacity}`, subtitle: `${d.color} · IMEI ${d.imei}`, unitPrice: d.salePrice, quantity: 1, discount: 0 }
+          : null,
+      };
+    }
+  }
+
+  let customer = order?.customer ?? quote?.customer ?? null;
   if (!customer && opts.customerId) {
     const c = await db.customer.findUnique({ where: { id: opts.customerId } });
     if (c) customer = { id: c.id, name: c.name, cpf: c.cpf, phone: c.phone };
   }
 
-  return { cardRules, catalog, sellers, discountLimitPct: me.discountLimitPct, accounts, quote, customer };
+  return { cardRules, catalog, sellers, discountLimitPct: me.discountLimitPct, accounts, quote, customer, order };
 }

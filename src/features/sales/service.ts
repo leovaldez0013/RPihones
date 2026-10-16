@@ -185,6 +185,17 @@ export async function saveSale(tx: Tx, data: SaleData, actor: Actor) {
   }
   if (completing && tradeTotal > totals.total) throw new BusinessError("O valor da troca é maior que o total da venda.");
 
+  // encomenda: o sinal já pago abate do total
+  const sinal = sum(payments.filter((p) => p.method === "SINAL").map((p) => p.amount));
+  if (sinal > 0 && !data.orderId) throw new BusinessError("Pagamento com sinal só é possível a partir de uma encomenda.");
+  if (data.orderId) {
+    const order = await tx.order.findUnique({ where: { id: data.orderId } });
+    if (!order || order.deletedAt) throw new BusinessError("Encomenda não encontrada.");
+    if (["ENTREGUE", "CANCELADA"].includes(order.status)) throw new BusinessError(`A encomenda #${order.number} já foi finalizada.`);
+    if (data.customerId && order.customerId !== data.customerId) throw new BusinessError("A encomenda é de outro cliente.");
+    if (sinal > order.deposit) throw new BusinessError(`O sinal da encomenda é de ${formatBRL(order.deposit)}.`);
+  }
+
   // ── grava a venda ──
   if (existing) {
     await releaseReservations(tx, existing.id, actor.id);
@@ -446,6 +457,11 @@ async function completeSale(
       refType: "VENDA",
       refId: saleId,
     });
+  }
+
+  if (data.orderId) {
+    await tx.order.update({ where: { id: data.orderId }, data: { status: "ENTREGUE" } });
+    await audit(tx, { userId: actor.id, action: "order.deliver", entity: "Order", entityId: data.orderId, summary: `Encomenda entregue na venda #${saleNumber}` });
   }
 
   await generateSaleDocuments(tx, saleId, actor.id);

@@ -80,7 +80,7 @@ export function PaymentsPanel({
                   {interest > 0 && <span className="block text-xs text-muted-foreground">cliente paga {formatBRL(p.amount + interest)} (juros {formatBRL(interest)})</span>}
                 </span>
                 <span className="font-medium tabular">{formatBRL(p.amount)}</span>
-                <Button variant="ghost" size="icon-sm" onClick={() => onChange(payments.filter((x) => x.key !== p.key))} aria-label="Remover pagamento">
+                <Button variant="ghost" size="icon-sm" disabled={p.method === "SINAL"} onClick={() => onChange(payments.filter((x) => x.key !== p.key))} aria-label="Remover pagamento">
                   <Trash2 />
                 </Button>
               </div>

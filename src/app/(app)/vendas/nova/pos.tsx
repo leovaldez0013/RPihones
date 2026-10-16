@@ -52,16 +52,17 @@ type Props = {
     items: Omit<CartLine, "key">[];
     tradeIns: TradeInDraft[];
   } | null;
+  order?: { id: string; number: number; deposit: number; item: Omit<CartLine, "key"> | null } | null;
 };
 
-export function Pos({ cardRules, catalog, sellers, currentUserId, discountLimitPct, customer: initialCustomer, quote }: Props) {
+export function Pos({ cardRules, catalog, sellers, currentUserId, discountLimitPct, customer: initialCustomer, quote, order }: Props) {
   const router = useRouter();
   const [customer, setCustomer] = useState<PickedCustomer | null>(initialCustomer);
   const [sellerId, setSellerId] = useState(quote?.sellerId ?? currentUserId);
-  const [lines, setLines] = useState<CartLine[]>(() => (quote?.items ?? []).map((i, idx) => ({ ...i, key: `q${idx}` })));
+  const [lines, setLines] = useState<CartLine[]>(() => [...(quote?.items ?? []), ...(order?.item ? [order.item] : [])].map((i, idx) => ({ ...i, key: `q${idx}` })));
   const [discount, setDiscount] = useState(quote?.discount ?? 0);
   const [tradeIns, setTradeIns] = useState<TradeInDraft[]>(quote?.tradeIns ?? []);
-  const [payments, setPayments] = useState<PaymentDraft[]>([]);
+  const [payments, setPayments] = useState<PaymentDraft[]>(order?.deposit ? [{ key: "sinal", method: "SINAL", amount: order.deposit, installments: 1 }] : []);
   const [notes, setNotes] = useState(quote?.notes ?? "");
   const [tradeOpen, setTradeOpen] = useState(false);
   const [editingTrade, setEditingTrade] = useState<TradeInDraft | null>(null);
@@ -81,7 +82,7 @@ export function Pos({ cardRules, catalog, sellers, currentUserId, discountLimitP
 
   // pagamentos que excedem o novo total (ex.: removeu item) são descartados
   useEffect(() => {
-    if (remaining < 0 && payments.length) setPayments([]);
+    if (remaining < 0 && payments.length) setPayments((p) => p.filter((x) => x.method === "SINAL"));
   }, [remaining, payments.length]);
 
   function addSellable(s: Sellable) {
@@ -109,6 +110,7 @@ export function Pos({ cardRules, catalog, sellers, currentUserId, discountLimitP
     const res = await saveSaleAction({
       id: quote?.id,
       action: actionType,
+      orderId: order?.id ?? null,
       customerId: customer?.id ?? null,
       sellerId,
       items: lines.map((l) => ({
