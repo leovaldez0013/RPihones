@@ -8,6 +8,9 @@ import {
   Smartphone,
   Repeat,
   FileText,
+  Percent,
+  ShieldCheck,
+  CreditCard,
   ChevronRight,
   type LucideIcon,
 } from "lucide-react";
@@ -26,6 +29,9 @@ const SETTINGS_SECTIONS: Section[] = [
   { href: "/configuracoes/catalogo", title: "Catálogo de modelos", description: "Modelos de iPhone, cores, capacidades e tabela TAC", icon: Smartphone, permission: "catalog.edit" },
   { href: "/configuracoes/avaliacao", title: "Avaliação de troca", description: "Tabela modelo × capacidade e ajustes por bateria, grade e checklist", icon: Repeat, permission: "settings.operational" },
   { href: "/configuracoes/documentos", title: "Modelos de documentos", description: "Recibo, garantia, termo de troca, encomenda, OS e orçamento", icon: FileText, permission: "settings.operational" },
+  { href: "/financeiro/contas", title: "Taxas da maquininha", description: "Taxa por parcela, juros repassados ao cliente e prazo de recebimento", icon: CreditCard, permission: "finance.view" },
+  { href: "/configuracoes/comissoes", title: "Comissões", description: "% por vendedor e categoria (novo, seminovo, acessório, serviço)", icon: Percent, permission: "settings.operational" },
+  { href: "/configuracoes/garantias", title: "Prazos de garantia", description: "Dias de garantia por condição e cláusulas de exclusão", icon: ShieldCheck, permission: "settings.operational" },
   { href: "/configuracoes/auditoria", title: "Log de auditoria", description: "Quem fez o quê e quando", icon: History, permission: "audit.view" },
 ];
 

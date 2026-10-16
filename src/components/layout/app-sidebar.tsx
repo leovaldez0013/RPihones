@@ -20,6 +20,7 @@ import { can } from "@/lib/permissions";
 import { NAV } from "./nav";
 
 export function isActive(pathname: string, href: string) {
+  if (href === "/financeiro") return pathname === "/financeiro" || (pathname.startsWith("/financeiro/") && !pathname.startsWith("/financeiro/caixa"));
   if (href === "/vendas") return pathname === "/vendas" || /^\/vendas\/(?!nova)/.test(pathname);
   return pathname === href || pathname.startsWith(`${href}/`);
 }

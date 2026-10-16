@@ -15,7 +15,8 @@ export async function seedFinanceBase(db: PrismaClient) {
   }
 
   const caixa = await db.financialAccount.create({ data: { name: "Caixa da loja", kind: "CAIXA", initialBalance: 50000 } });
-  const banco = await db.financialAccount.create({ data: { name: "Banco — conta PJ", kind: "BANCO", initialBalance: 4500000 } });
+  // saldo inicial alto: o seed compra todo o estoque antes das vendas da demonstração
+  const banco = await db.financialAccount.create({ data: { name: "Banco — conta PJ", kind: "BANCO", initialBalance: 130000000 } });
   const maquininha = await db.financialAccount.create({ data: { name: "Maquininha", kind: "MAQUININHA", initialBalance: 0 } });
 
   // Taxas da maquininha (bandeira "TODAS"): débito, crédito 1x a 12x.

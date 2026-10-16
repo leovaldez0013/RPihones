@@ -6,6 +6,7 @@ import { seedFinanceBase } from "./finance-base";
 import { seedCustomers } from "./people";
 import { seedOpenPurchases, seedPurchasesFromDevices } from "./purchases";
 import { seedSalesHistory, seedTradeInTable } from "./sales";
+import { seedFinanceHistory } from "./finance-history";
 
 
 async function main() {
@@ -35,6 +36,8 @@ async function main() {
   console.log("… gerando vendas dos últimos meses (pode levar 1–2 min)");
   const sales = await seedSalesHistory(ctx.users, customers, accounts.maquininha);
   console.log(`✔ ${sales.count} vendas (${sales.trades} com aparelho na troca)`);
+  const fin = await seedFinanceHistory(accounts.banco, ctx.users.admin);
+  console.log(`✔ ${fin} lançamentos de despesas e comissões`);
   console.log("✅ Pronto! Login: admin@rpiphones.com.br / admin123");
 }
 

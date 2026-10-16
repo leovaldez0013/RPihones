@@ -89,8 +89,12 @@ export async function seedSalesHistory(users: { gerente: string; vendedor1: stri
   // vende ~65% dos aparelhos, de 1 a 75 dias após a entrada
   const toSell = devices.filter(() => chance(0.65));
   const plan = toSell
-    .map((d) => ({ d, when: new Date(d.entryDate.getTime() + int(1, 75) * DAY + int(0, 8) * 3600000) }))
-    .filter((p) => p.when < addDays(today, -0.2))
+    .map((d) => {
+      // vende entre 1 e 75 dias após a entrada, sem passar de hoje
+      const maxDays = Math.max(1, Math.min(75, Math.floor((today.getTime() - d.entryDate.getTime()) / DAY) - 1));
+      return { d, when: new Date(d.entryDate.getTime() + int(1, maxDays) * DAY + int(0, 8) * 3600000) };
+    })
+    .filter((p) => p.when < addDays(today, -0.1))
     .sort((a, b) => a.when.getTime() - b.when.getTime());
 
   for (const { d, when } of plan) {

@@ -13,12 +13,14 @@ export function PhotoUpload({
   folder = "aparelhos",
   max = 8,
   className,
+  accept = "image/*",
 }: {
   value: string[];
   onChange: (urls: string[]) => void;
   folder?: string;
   max?: number;
   className?: string;
+  accept?: string;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
@@ -42,8 +44,12 @@ export function PhotoUpload({
     <div className={cn("flex flex-wrap gap-2", className)}>
       {value.map((url) => (
         <div key={url} className="group relative size-20 overflow-hidden rounded-xl border bg-muted">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={url} alt="" className="size-full object-cover" />
+          {url.endsWith(".pdf") ? (
+            <a href={url} target="_blank" rel="noreferrer" className="flex size-full items-center justify-center text-xs font-semibold text-muted-foreground">PDF</a>
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={url} alt="" className="size-full object-cover" />
+          )}
           <button
             type="button"
             onClick={() => onChange(value.filter((u) => u !== url))}
@@ -62,14 +68,14 @@ export function PhotoUpload({
           className="flex size-20 flex-col items-center justify-center gap-1 rounded-xl border border-dashed text-xs text-muted-foreground transition hover:border-primary hover:text-primary"
         >
           {loading ? <Loader2 className="size-5 animate-spin" /> : <Camera className="size-5" />}
-          {loading ? "Enviando" : "Foto"}
+          {loading ? "Enviando" : accept === "image/*" ? "Foto" : "Anexo"}
         </button>
       )}
       <input
         ref={input}
         type="file"
-        accept="image/*"
-        capture="environment"
+        accept={accept}
+        capture={accept === "image/*" ? "environment" : undefined}
         multiple
         className="hidden"
         onChange={(e) => handle(e.target.files)}

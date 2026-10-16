@@ -12,6 +12,7 @@ import {
   ScanLine,
   Megaphone,
   Wallet,
+  Banknote,
   BarChart3,
   Settings,
   type LucideIcon,
@@ -34,6 +35,7 @@ export const NAV: NavGroup[] = [
       { title: "Encomendas", href: "/encomendas", icon: PackageSearch, permission: "orders.view" },
       { title: "Clientes", href: "/clientes", icon: Users, permission: "customers.view" },
       { title: "Marketing", href: "/marketing", icon: Megaphone, permission: "marketing.view" },
+      { title: "Caixa", href: "/financeiro/caixa", icon: Banknote, permission: "cash.operate" },
     ],
   },
   {
