@@ -56,6 +56,7 @@ export async function createDevice(
     refType?: string;
     refId?: string;
     purchaseItemId?: string;
+    eventType?: string;
   },
 ) {
   await assertImeiAvailable(tx, data.imei, data.imei2);
@@ -74,7 +75,7 @@ export async function createDevice(
   await learnTac(tx, data.imei, data.modelId);
   await addDeviceEvent(tx, {
     deviceId: device.id,
-    type: "ENTRADA",
+    type: ctx.eventType ?? "ENTRADA",
     description: ctx.eventDescription ?? `Entrada no estoque — custo ${formatBRL(data.acquisitionCost)}`,
     userId: ctx.userId,
     refType: ctx.refType,

@@ -153,12 +153,12 @@ export async function seedAccessories(db: PrismaClient, userId: string) {
         category: it.category,
         brand: it.brand,
         compatibility: JSON.stringify(it.compat ?? []),
-        quantity: it.qty,
+        quantity: it.isPart ? it.qty : it.qty * 4,
         cost: it.cost,
         price: it.price,
         minStock: it.min,
         isPart: !!it.isPart,
-        movements: { create: { type: "ENTRADA", quantity: it.qty, unitCost: it.cost, reason: "Estoque inicial", refType: "MANUAL", userId, createdAt: daysAgo(200) } },
+        movements: { create: { type: "ENTRADA", quantity: it.isPart ? it.qty : it.qty * 4, unitCost: it.cost, reason: "Estoque inicial", refType: "MANUAL", userId, createdAt: daysAgo(200) } },
       },
     });
     ids[it.sku] = a.id;

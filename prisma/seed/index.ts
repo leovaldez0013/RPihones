@@ -1,12 +1,12 @@
 // Seed de demonstração. Rodar com: npm run db:seed (em banco vazio) ou npm run db:reset (zera e popula).
-import { PrismaClient } from "@prisma/client";
+import { db } from "../../src/lib/db";
 import { seedBase } from "./base";
 import { seedAccessories, seedCatalog, seedDevices, seedSuppliers } from "./stock";
 import { seedFinanceBase } from "./finance-base";
 import { seedCustomers } from "./people";
 import { seedOpenPurchases, seedPurchasesFromDevices } from "./purchases";
+import { seedSalesHistory, seedTradeInTable } from "./sales";
 
-const db = new PrismaClient();
 
 async function main() {
   if ((await db.device.count()) > 0) {
@@ -21,7 +21,7 @@ async function main() {
   const models = await seedCatalog(db);
   console.log(`✔ ${Object.keys(models).length} modelos de iPhone`);
   const suppliers = await seedSuppliers(db);
-  const devices = await seedDevices(db, models, suppliers, ctx.users.gerente);
+  const devices = await seedDevices(db, models, suppliers, ctx.users.gerente, 330);
   console.log(`✔ ${devices.length} aparelhos`);
   const purchases = await seedPurchasesFromDevices(db, devices, ctx.users.gerente, accounts.banco);
   console.log(`✔ ${purchases} pedidos de compra recebidos (com contas a pagar)`);
@@ -30,6 +30,11 @@ async function main() {
   await seedOpenPurchases(db, ctx.users.gerente, suppliers, accessories);
   const customers = await seedCustomers(db);
   console.log(`✔ ${customers.length} clientes`);
+  await seedTradeInTable();
+  console.log("✔ Tabela de avaliação de troca e regras de comissão");
+  console.log("… gerando vendas dos últimos meses (pode levar 1–2 min)");
+  const sales = await seedSalesHistory(ctx.users, customers, accounts.maquininha);
+  console.log(`✔ ${sales.count} vendas (${sales.trades} com aparelho na troca)`);
   console.log("✅ Pronto! Login: admin@rpiphones.com.br / admin123");
 }
 

@@ -9,7 +9,7 @@ export { BusinessError };
 
 export type ActionResult<T = unknown> =
   | { ok: true; data: T; message?: string }
-  | { ok: false; error: string; fieldErrors?: Record<string, string[]> };
+  | { ok: false; error: string; code?: string; fieldErrors?: Record<string, string[]> };
 
 type Handler<I, R> = (input: I, ctx: { user: SessionUser }) => Promise<R>;
 
@@ -45,7 +45,7 @@ export function action<S extends z.ZodType, R>(
       const data = await handler(parsed.data, { user });
       return { ok: true, data };
     } catch (err) {
-      if (err instanceof BusinessError) return { ok: false, error: err.message };
+      if (err instanceof BusinessError) return { ok: false, error: err.message, code: err.code };
       const prismaCode = (err as { code?: string })?.code;
       if (prismaCode === "P2002") {
         const target = (err as { meta?: { target?: string[] | string } }).meta?.target;
