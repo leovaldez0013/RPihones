@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import { Smartphone } from "lucide-react";
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { getUser } from "@/lib/session";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = { title: "Entrar" };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ callbackUrl?: string }> }) {
   const { callbackUrl } = await searchParams;
+  if (await getUser()) redirect("/dashboard");
   const store = await db.storeSettings.findUnique({ where: { id: "default" } }).catch(() => null);
 
   return (

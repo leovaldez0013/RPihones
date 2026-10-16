@@ -1,6 +1,6 @@
 "use client";
 
-import { useZodForm } from "@/components/shared/use-zod-form";
+import { toastFirstError, useZodForm } from "@/components/shared/use-zod-form";
 import { toast } from "sonner";
 import { Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ export function OperationalForm({ defaults }: { defaults: OperationalInput }) {
     const res = await saveOperationalSettings(values);
     if (res.ok) toast.success("Parâmetros salvos");
     else toast.error(res.error);
-  });
+  }, toastFirstError);
 
   return (
     <form onSubmit={onSubmit}>

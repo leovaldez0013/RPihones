@@ -11,12 +11,8 @@ export const authConfig = {
       const { pathname } = request.nextUrl;
       const isPublic =
         pathname.startsWith("/login") || pathname.startsWith("/api/auth") || pathname.startsWith("/api/cron");
-      if (isPublic) {
-        if (isLoggedIn && pathname.startsWith("/login")) {
-          return Response.redirect(new URL("/dashboard", request.nextUrl));
-        }
-        return true;
-      }
+      // /login decide no servidor se a sessão ainda é válida (usuário ativo no banco)
+      if (isPublic) return true;
       return isLoggedIn;
     },
     jwt({ token, user }) {

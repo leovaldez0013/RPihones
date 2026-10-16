@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Controller } from "react-hook-form";
-import { useZodForm } from "@/components/shared/use-zod-form";
+import { toastFirstError, useZodForm } from "@/components/shared/use-zod-form";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Loader2, Plus, Pencil } from "lucide-react";
@@ -115,7 +115,7 @@ function UserForm({ row, onDone }: { row: Row | null; onDone: () => void }) {
     toast.success(row ? "Usuário atualizado" : "Usuário criado");
     router.refresh();
     onDone();
-  });
+  }, toastFirstError);
 
   return (
     <form onSubmit={onSubmit} className="grid gap-4 sm:grid-cols-2">

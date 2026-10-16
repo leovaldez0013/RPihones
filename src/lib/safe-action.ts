@@ -3,13 +3,9 @@ import { z } from "zod";
 import { getUser, type SessionUser } from "./session";
 import { can, type Permission } from "./permissions";
 
-/** Erro de regra de negócio: a mensagem é mostrada ao usuário. */
-export class BusinessError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "BusinessError";
-  }
-}
+import { BusinessError } from "./errors";
+
+export { BusinessError };
 
 export type ActionResult<T = unknown> =
   | { ok: true; data: T; message?: string }

@@ -1,7 +1,7 @@
 "use client";
 
 import { Controller } from "react-hook-form";
-import { useZodForm } from "@/components/shared/use-zod-form";
+import { toastFirstError, useZodForm } from "@/components/shared/use-zod-form";
 import { toast } from "sonner";
 import { Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,7 @@ export function StoreForm({ defaults }: { defaults: StoreInput }) {
     const res = await saveStoreSettings(values);
     if (res.ok) toast.success("Dados da loja salvos");
     else toast.error(res.error);
-  });
+  }, toastFirstError);
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-6">

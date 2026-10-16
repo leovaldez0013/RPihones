@@ -70,7 +70,7 @@ export const MaskedInput = React.forwardRef<
   );
 });
 
-/** Input de moeda em centavos — digita como caixa registradora. */
+/** Input de moeda em centavos — digita como caixa registradora (dígitos entram pela direita). */
 export const MoneyInput = React.forwardRef<
   HTMLInputElement,
   Omit<React.ComponentProps<typeof Input>, "onChange" | "value"> & {
@@ -78,6 +78,8 @@ export const MoneyInput = React.forwardRef<
     onChange?: (cents: number) => void;
   }
 >(function MoneyInput({ value, onChange, className, ...props }, ref) {
+  const cents = Math.max(0, Math.round(Number(value) || 0));
+  const MAX = 99_999_999_99;
   return (
     <div className="relative">
       <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
@@ -86,14 +88,42 @@ export const MoneyInput = React.forwardRef<
         inputMode="numeric"
         {...props}
         className={cn("pl-9 text-right tabular", className)}
-        value={maskMoneyFromCents(value ?? 0)}
+        value={maskMoneyFromCents(cents)}
+        onKeyDown={(e) => {
+          if (props.readOnly || props.disabled) return;
+          if (/^\d$/.test(e.key) && !e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+            const next = cents * 10 + Number(e.key);
+            if (next <= MAX) onChange?.(next);
+          } else if (e.key === "Backspace") {
+            e.preventDefault();
+            const input = e.currentTarget;
+            const all = input.selectionStart === 0 && input.selectionEnd === input.value.length;
+            onChange?.(all ? 0 : Math.floor(cents / 10));
+          } else if (e.key === "Delete") {
+            e.preventDefault();
+            onChange?.(0);
+          }
+        }}
         onChange={(e) => {
-          const digits = e.target.value.replace(/\D/g, "").replace(/^0+/, "");
-          onChange?.(Number(digits || "0"));
+          // teclado virtual (keydown "Unidentified"), colar ou autofill: usa o tipo da edição,
+          // independente de onde está o cursor
+          const native = e.nativeEvent as InputEvent;
+          const inserted = (native.data ?? "").replace(/\D/g, "");
+          if (native.inputType?.startsWith("insert") && native.inputType !== "insertFromPaste" && inserted) {
+            const next = Number(`${cents}${inserted}`);
+            if (next <= MAX) onChange?.(next);
+          } else if (native.inputType?.startsWith("delete")) {
+            onChange?.(Math.floor(cents / 10));
+          } else {
+            const digits = e.target.value.replace(/\D/g, "").replace(/^0+/, "");
+            onChange?.(Math.min(Number(digits || "0"), MAX));
+          }
         }}
         onFocus={(e) => {
           const el = e.target;
           requestAnimationFrame(() => el.setSelectionRange(el.value.length, el.value.length));
+          props.onFocus?.(e);
         }}
       />
     </div>

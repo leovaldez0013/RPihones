@@ -91,3 +91,11 @@ export const zDate = z
     const d = new Date(v);
     return Number.isNaN(d.getTime()) ? null : d;
   });
+
+/** Inteiro opcional vindo de input: "" / null → null. */
+export function zOptionalInt(min: number, max: number, message = "Valor inválido") {
+  return z.preprocess(
+    (v) => (v === "" || v == null ? null : Number(v)),
+    z.number({ message }).int(message).min(min, message).max(max, message).nullable(),
+  );
+}
