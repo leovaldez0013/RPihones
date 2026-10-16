@@ -656,6 +656,7 @@ model FinancialAccount {
 
 model Category {
   id        String     @id @default(cuid())
+  key       String?    @unique // categorias do sistema (VENDA_APARELHO, COMPRA_MERCADORIA...)
   name      String
   kind      String // RECEITA | DESPESA
   dreGroup  String // RECEITA_VENDAS | RECEITA_SERVICOS | CMV | TAXAS | COMISSOES | DESPESA_OPERACIONAL | OUTRAS | NAO_OPERACIONAL

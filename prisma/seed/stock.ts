@@ -67,7 +67,7 @@ export async function seedDevices(
   const names = Object.keys(models);
   // modelos mais recentes aparecem com mais frequência
   const weighted = names.flatMap((n) => Array(Math.max(1, models[n].year - 2018)).fill(n) as string[]);
-  const devices: { id: string; model: string; capacity: string; color: string; condition: string; salePrice: number; cost: number; entryDate: Date }[] = [];
+  const devices: { id: string; model: string; modelId: string; supplierId: string; capacity: string; color: string; condition: string; salePrice: number; cost: number; entryDate: Date }[] = [];
 
   for (let n = 0; n < count; n++) {
     const name = pick(weighted);
@@ -78,6 +78,7 @@ export async function seedDevices(
     const salePrice = priceFor(name, m.capacities, capacity, condition);
     const cost = Math.round((salePrice * (0.76 + int(0, 8) / 100)) / 1000) * 1000;
     const entryDate = daysAgo(int(1, 210), int(9, 18));
+    const supplierId = pick(supplierIds.slice(0, 2));
     const imei = makeImei(m.tac, 100000 + n * 37 + int(0, 30));
     const battery = condition === "NOVO" ? 100 : Math.max(76, 100 - int(0, 22) - (2025 - m.year) * 2);
     const d = await db.device.create({
@@ -91,7 +92,7 @@ export async function seedDevices(
         batteryHealth: battery,
         grade: condition === "NOVO" ? "A+" : pick(["A+", "A", "A", "A", "B", "B", "C"]),
         origin: "COMPRA",
-        supplierId: pick(supplierIds),
+        supplierId,
         acquisitionCost: cost,
         salePrice,
         entryDate,
@@ -100,7 +101,7 @@ export async function seedDevices(
         events: { create: { type: "ENTRADA", description: "Entrada no estoque (dados de demonstração)", userId, createdAt: entryDate } },
       },
     });
-    devices.push({ id: d.id, model: name, capacity, color, condition, salePrice, cost, entryDate });
+    devices.push({ id: d.id, model: name, modelId: m.id, supplierId, capacity, color, condition, salePrice, cost, entryDate });
   }
   return devices;
 }
