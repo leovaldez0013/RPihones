@@ -1,4 +1,5 @@
-// Seed de demonstração. Rodar com: npm run db:seed (em banco vazio) ou npm run db:reset (zera e popula).
+// Seed. Padrão: banco limpo para uso real (usuários, loja, catálogo, taxas, configurações e acessórios).
+// Com --demo (npm run db:seed:demo): 6 meses de dados fictícios para conhecer o sistema.
 import { db } from "../../src/lib/db";
 import { seedBase } from "./base";
 import { seedAccessories, seedCatalog, seedDevices, seedSuppliers } from "./stock";
@@ -10,18 +11,30 @@ import { seedFinanceHistory } from "./finance-history";
 import { seedImeiChecks, seedOrders, seedServiceOrders } from "./service";
 
 
+const DEMO = process.argv.includes("--demo");
+
 async function main() {
-  if ((await db.device.count()) > 0) {
-    console.log("O banco já tem dados. Para recriar a demonstração rode: npm run db:reset");
+  if ((await db.user.count()) > 0) {
+    console.log("O banco já tem dados. Para recriar rode: npm run db:reset (ou db:reset:demo)");
     return;
   }
-  console.log("🌱 Populando banco de demonstração…");
-  const ctx = await seedBase(db);
+  console.log(DEMO ? "🌱 Populando banco de DEMONSTRAÇÃO…" : "🌱 Preparando banco para uso (sem aparelhos, fornecedores, clientes ou movimentações)…");
+  const ctx = await seedBase(db, { demo: DEMO });
   console.log(`✔ ${Object.keys(ctx.users).length} usuários`);
-  const accounts = await seedFinanceBase(db);
+  const accounts = await seedFinanceBase(db, { demo: DEMO });
   console.log("✔ Plano de contas, contas financeiras, taxas da maquininha e garantias");
   const models = await seedCatalog(db);
   console.log(`✔ ${Object.keys(models).length} modelos de iPhone`);
+  await seedTradeInTable();
+  console.log("✔ Tabela de avaliação de troca e regras de comissão");
+
+  if (!DEMO) {
+    const accessories = await seedAccessories(db, ctx.users.gerente);
+    console.log(`✔ ${Object.keys(accessories).length} acessórios/peças`);
+    console.log("✅ Pronto! Login: admin@rpiphones.com.br / admin123 — troque as senhas em Configurações → Usuários.");
+    return;
+  }
+
   const suppliers = await seedSuppliers(db);
   const devices = await seedDevices(db, models, suppliers, ctx.users.gerente, 330);
   console.log(`✔ ${devices.length} aparelhos`);
@@ -32,8 +45,6 @@ async function main() {
   await seedOpenPurchases(db, ctx.users.gerente, suppliers, accessories);
   const customers = await seedCustomers(db);
   console.log(`✔ ${customers.length} clientes`);
-  await seedTradeInTable();
-  console.log("✔ Tabela de avaliação de troca e regras de comissão");
   console.log("… gerando vendas dos últimos meses (pode levar 1–2 min)");
   const sales = await seedSalesHistory(ctx.users, customers, accounts.maquininha);
   console.log(`✔ ${sales.count} vendas (${sales.trades} com aparelho na troca)`);

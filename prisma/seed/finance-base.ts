@@ -9,14 +9,15 @@ export const WARRANTY_CLAUSES = `A garantia NÃO cobre:
 - problemas de software causados por jailbreak, apps de terceiros ou atualizações interrompidas;
 - acessórios que acompanham o aparelho, salvo garantia própria.`;
 
-export async function seedFinanceBase(db: PrismaClient) {
+export async function seedFinanceBase(db: PrismaClient, opts: { demo: boolean }) {
   for (const c of DEFAULT_CATEGORIES) {
     await db.category.upsert({ where: { key: c.key }, update: {}, create: { ...c, system: true } });
   }
 
-  const caixa = await db.financialAccount.create({ data: { name: "Caixa da loja", kind: "CAIXA", initialBalance: 50000 } });
-  // saldo inicial alto: o seed compra todo o estoque antes das vendas da demonstração
-  const banco = await db.financialAccount.create({ data: { name: "Banco — conta PJ", kind: "BANCO", initialBalance: 130000000 } });
+  // uso real: saldos começam em zero (ajuste em Financeiro → Contas). Na demonstração o saldo é alto
+  // porque o seed compra todo o estoque antes das vendas.
+  const caixa = await db.financialAccount.create({ data: { name: "Caixa da loja", kind: "CAIXA", initialBalance: opts.demo ? 50000 : 0 } });
+  const banco = await db.financialAccount.create({ data: { name: "Banco — conta PJ", kind: "BANCO", initialBalance: opts.demo ? 130000000 : 0 } });
   const maquininha = await db.financialAccount.create({ data: { name: "Maquininha", kind: "MAQUININHA", initialBalance: 0 } });
 
   // Taxas da maquininha (bandeira "TODAS"): débito, crédito 1x a 12x.

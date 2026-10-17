@@ -1,7 +1,7 @@
 import type { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
-export async function seedBase(db: PrismaClient) {
+export async function seedBase(db: PrismaClient, opts: { demo: boolean }) {
   await db.storeSettings.upsert({
     where: { id: "default" },
     update: {},
@@ -22,7 +22,8 @@ export async function seedBase(db: PrismaClient) {
       city: "São Paulo",
       state: "SP",
       staleStockDays: 45,
-      imeiProvider: "mock",
+      // uso real: sem consulta simulada (configure a API em Parâmetros gerais)
+      imeiProvider: opts.demo ? "mock" : "none",
     },
   });
 

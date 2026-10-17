@@ -31,13 +31,15 @@ Pré-requisito: **Node.js 20+** (testado com Node 24).
 npm install
 cp .env.example .env        # no Windows: copy .env.example .env
 npm run db:push             # cria o banco SQLite (prisma/dev.db)
-npm run db:seed             # popula com dados de demonstração
+npm run db:seed             # prepara para uso: usuários, loja, catálogo, taxas e acessórios
 npm run dev                 # http://localhost:3000
 ```
 
-Para **zerar** o banco e popular de novo: `npm run db:reset` (apaga todos os dados locais).
+O banco começa **limpo para uso real**: sem aparelhos, fornecedores, clientes, vendas, OS ou lançamentos, com saldos das contas em zero e consulta de IMEI desligada.
 
-### Usuários de demonstração (criados pelo seed)
+Quer conhecer o sistema com dados fictícios (6 meses de vendas, OS, encomendas…)? Use um banco separado ou rode `npm run db:reset:demo` (**apaga tudo** e popula a demonstração). Para voltar ao banco limpo: `npm run db:reset` (também apaga tudo).
+
+### Usuários iniciais (criados pelo seed)
 
 | Perfil | E-mail | Senha |
 |---|---|---|
@@ -69,8 +71,10 @@ Para **zerar** o banco e popular de novo: `npm run db:reset` (apaga todos os dad
 | `npm run lint` | ESLint |
 | `npm test` | Testes (Vitest) — usam um banco separado `prisma/test.db` |
 | `npm run db:push` | Aplica o schema no banco |
-| `npm run db:seed` | Dados de demonstração |
-| `npm run db:reset` | Zera o banco e roda o seed |
+| `npm run db:seed` | Dados iniciais para uso (sem cadastros de demonstração) |
+| `npm run db:seed:demo` | Dados de demonstração (em banco vazio) |
+| `npm run db:reset` | **Apaga tudo** e roda o seed limpo |
+| `npm run db:reset:demo` | **Apaga tudo** e roda o seed de demonstração |
 | `npm run db:studio` | Abre o Prisma Studio |
 | `npm run db:postgres` | Troca o provider do schema para PostgreSQL |
 
@@ -135,3 +139,4 @@ A matriz completa está em `src/lib/permissions.ts`. Toda ação do servidor val
 - **Dashboard:** comparações são *hoje × ontem* e *mês até hoje × mesmo período do mês anterior* (comparação justa no meio do mês). Vendedor vê só os próprios números e a comissão; técnico vê o painel de OS.
 - **Relatórios:** o período é inclusivo (de 1º até hoje por padrão), no fuso de São Paulo. Excel/CSV saem com valores em reais (número) para somar na planilha; o PDF é gerado no servidor em A4 (paisagem quando há muitas colunas).
 - **Backup:** Configurações → Backup dos dados baixa um JSON com todas as tabelas (só administrador; senhas apenas como hash e chave da API de IMEI omitida). Em produção, use também o backup automático do Neon/Supabase.
+- **Seed limpo por padrão:** o banco inicial traz só o que é configuração (usuários, loja, catálogo de modelos e TACs, taxas da maquininha, tabela de avaliação, comissões, garantias) e o cadastro de acessórios/peças. Aparelhos, fornecedores, OS, clientes e movimentações vêm apenas na demonstração (`db:seed:demo`).
