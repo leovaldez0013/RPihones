@@ -5,30 +5,13 @@ import { nextSequence } from "@/lib/db";
 import { BusinessError } from "@/lib/errors";
 import { audit } from "@/lib/audit";
 import { formatBRL } from "@/domain/money";
-import { calcCard, findFee, receivableSchedule } from "@/domain/installments";
 import { ORDER_STATUS, PAYMENT_METHOD } from "@/domain/constants";
 import { addDeviceEvent } from "@/features/devices/service";
-import { createEntry, defaultAccountId } from "@/features/finance/service";
+import { createEntry, defaultAccountId, registerReceipt } from "@/features/finance/service";
 import { generateOrderDoc } from "@/features/documents/service";
-import { getCardRules } from "@/features/sales/config";
 import type { orderSchema } from "./schemas";
 
 type OrderData = z.output<typeof orderSchema>;
-
-/** Lança o sinal no financeiro (cartão: líquido de taxa na data de recebimento). */
-async function registerDeposit(tx: Tx, orderId: string, number: number, customerId: string, amount: number, method: string, userId: string) {
-  const desc = `Sinal da encomenda #${number} (${PAYMENT_METHOD.label(method)})`;
-  if (method === "DEBITO" || method === "CREDITO") {
-    const rules = await getCardRules(tx);
-    const rule = findFee(rules, method, 1) ?? { feePct: 0, customerRatePct: 0, settlementDays: method === "DEBITO" ? 1 : 30 };
-    const calc = calcCard(amount, { feePct: rule.feePct, customerRatePct: 0 }, 1);
-    const [r] = receivableSchedule(calc, rule.settlementDays);
-    await createEntry(tx, { type: "RECEBER", description: desc, amount, netAmount: r.net, dueDate: r.dueDate, categoryKey: "SINAL", accountId: rules[0]?.accountId ?? (await defaultAccountId(tx, "MAQUININHA")), method, customerId, originType: "ENCOMENDA", originId: orderId, userId });
-  } else {
-    const cashSession = method === "DINHEIRO" ? await tx.cashSession.findFirst({ where: { userId, closedAt: null } }) : null;
-    await createEntry(tx, { type: "RECEBER", description: desc, amount, dueDate: new Date(), paid: true, categoryKey: "SINAL", accountId: await defaultAccountId(tx, method === "DINHEIRO" ? "CAIXA" : "BANCO"), method, customerId, originType: "ENCOMENDA", originId: orderId, cashSessionId: cashSession?.id ?? null, userId });
-  }
-}
 
 export async function saveOrder(tx: Tx, data: OrderData, userId: string) {
   const model = await tx.deviceModel.findUniqueOrThrow({ where: { id: data.modelId } });
@@ -55,7 +38,7 @@ export async function saveOrder(tx: Tx, data: OrderData, userId: string) {
   if (data.deposit > 0 && !data.depositMethod) throw new BusinessError("Informe a forma de pagamento do sinal.");
   const number = await nextSequence(tx, "ORDER");
   const o = await tx.order.create({ data: { ...fields, number, deposit: data.deposit, depositMethod: data.deposit > 0 ? data.depositMethod : null, createdById: userId } });
-  if (data.deposit > 0) await registerDeposit(tx, o.id, number, data.customerId, data.deposit, data.depositMethod!, userId);
+  if (data.deposit > 0) await registerReceipt(tx, { description: `Sinal da encomenda #${number} (${PAYMENT_METHOD.label(data.depositMethod!)})`, amount: data.deposit, method: data.depositMethod!, categoryKey: "SINAL", customerId: data.customerId, originType: "ENCOMENDA", originId: o.id, userId });
   await generateOrderDoc(tx, o.id, userId);
   await audit(tx, { userId, action: "order.create", entity: "Order", entityId: o.id, summary: `Encomenda #${number}: ${model.name}${data.deposit ? ` — sinal ${formatBRL(data.deposit)}` : ""}` });
   // pode já existir aparelho compatível em estoque

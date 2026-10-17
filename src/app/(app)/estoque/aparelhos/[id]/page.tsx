@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Pencil, Printer, ScanLine, BatteryMedium, ShieldCheck } from "lucide-react";
+import { Pencil, Printer, ScanLine, BatteryMedium, ShieldCheck, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/page-header";
@@ -63,6 +63,13 @@ export default async function DevicePage({ params }: { params: Promise<{ id: str
               <Button asChild variant="outline" size="lg">
                 <Link href={`/imei?imei=${d.imei}&deviceId=${d.id}`}>
                   <ScanLine /> Testar IMEI
+                </Link>
+              </Button>
+            )}
+            {can(user.role, "serviceOrders.edit") && !d.deletedAt && ["DISPONIVEL", "EM_AVALIACAO", "DEVOLVIDO"].includes(d.status) && !d.serviceOrders.some((o) => !["ENTREGUE", "CANCELADA"].includes(o.status)) && (
+              <Button asChild variant="outline" size="lg">
+                <Link href={`/os/nova?aparelho=${d.id}`}>
+                  <Wrench /> Abrir OS
                 </Link>
               </Button>
             )}

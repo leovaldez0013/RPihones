@@ -2,6 +2,8 @@
 import type { Tx } from "@/lib/db";
 import { BusinessError } from "@/lib/errors";
 import { DEFAULT_CATEGORIES } from "./categories";
+import { calcCard, findFee, receivableSchedule } from "@/domain/installments";
+import { getCardRules } from "@/features/sales/config";
 
 export async function categoryId(tx: Tx, key: string): Promise<string> {
   const found = await tx.category.findUnique({ where: { key } });
@@ -110,4 +112,24 @@ export async function reverseEntries(
     }
   }
   return { count: entries.length, refunded };
+}
+
+/**
+ * Recebimento à vista (sinal de encomenda, cobrança de OS…): dinheiro/PIX entram pagos
+ * (dinheiro no caixa aberto do usuário); cartão vira recebível líquido de taxa na data da maquininha.
+ */
+export async function registerReceipt(
+  tx: Tx,
+  r: { description: string; amount: number; method: "DINHEIRO" | "PIX" | "DEBITO" | "CREDITO"; categoryKey: string; customerId?: string | null; originType: string; originId: string; userId: string },
+) {
+  const base = { type: "RECEBER" as const, description: r.description, amount: r.amount, categoryKey: r.categoryKey, method: r.method, customerId: r.customerId, originType: r.originType, originId: r.originId, userId: r.userId };
+  if (r.method === "DEBITO" || r.method === "CREDITO") {
+    const rules = await getCardRules(tx);
+    const rule = findFee(rules, r.method, 1) ?? { feePct: 0, customerRatePct: 0, settlementDays: r.method === "DEBITO" ? 1 : 30 };
+    const calc = calcCard(r.amount, { feePct: rule.feePct, customerRatePct: 0 }, 1);
+    const [due] = receivableSchedule(calc, rule.settlementDays);
+    return createEntry(tx, { ...base, netAmount: due.net, dueDate: due.dueDate, accountId: rules[0]?.accountId ?? (await defaultAccountId(tx, "MAQUININHA")) });
+  }
+  const cashSession = r.method === "DINHEIRO" ? await tx.cashSession.findFirst({ where: { userId: r.userId, closedAt: null } }) : null;
+  return createEntry(tx, { ...base, dueDate: new Date(), paid: true, accountId: await defaultAccountId(tx, r.method === "DINHEIRO" ? "CAIXA" : "BANCO"), cashSessionId: cashSession?.id ?? null });
 }

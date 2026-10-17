@@ -7,6 +7,7 @@ import { seedCustomers } from "./people";
 import { seedOpenPurchases, seedPurchasesFromDevices } from "./purchases";
 import { seedSalesHistory, seedTradeInTable } from "./sales";
 import { seedFinanceHistory } from "./finance-history";
+import { seedOrders, seedServiceOrders } from "./service";
 
 
 async function main() {
@@ -38,6 +39,10 @@ async function main() {
   console.log(`✔ ${sales.count} vendas (${sales.trades} com aparelho na troca)`);
   const fin = await seedFinanceHistory(accounts.banco, ctx.users.admin);
   console.log(`✔ ${fin} lançamentos de despesas e comissões`);
+  const sos = await seedServiceOrders(ctx.users, customers);
+  console.log(`✔ ${sos} ordens de serviço`);
+  const orders = await seedOrders(ctx.users, customers);
+  console.log(`✔ ${orders} encomendas`);
   console.log("✅ Pronto! Login: admin@rpiphones.com.br / admin123");
 }
 

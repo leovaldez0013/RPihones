@@ -102,3 +102,9 @@ A matriz completa está em `src/lib/permissions.ts`. Toda ação do servidor val
 - **Nada é apagado de verdade**: registros têm `deletedAt` (soft delete) e as ações ficam no log de auditoria.
 - **`prisma db push`** em vez de migrações versionadas — mais simples para o lojista; dá para migrar para `prisma migrate` depois.
 - Busca sem diferenciar maiúsculas funciona em SQLite e PostgreSQL (helper `ci()` em `src/lib/db.ts`).
+- **Encomendas:** o sinal entra no financeiro na hora (categoria “Sinal”, fora do DRE) e é abatido na venda de entrega. Quando entra no estoque um aparelho compatível (modelo, e capacidade/cor/condição/preço máximo quando informados), o sistema notifica; a reserva é feita com um clique na encomenda. Cancelar permite devolver ou reter o sinal.
+- **Ordens de serviço — dois tipos:** *Interna* (preparar aparelho do estoque: o aparelho fica “Em manutenção” e, ao concluir, mão de obra + peças somam ao custo real dele) e *De cliente* (reparo: gera comprovante de entrada e de entrega; o valor cobrado vira conta a receber/recebida na categoria “Serviços”).
+- **Peças da OS** saem do estoque no momento em que são lançadas (custo médio atual) e voltam se forem removidas ou se a OS for cancelada.
+- **Valor cobrado da OS é um total único** (serviço + peças), que é o que entra no financeiro e no DRE. O preço por peça é só referência.
+- **Kanban:** soltar o cartão em “Entregue” abre a confirmação de entrega (com a forma de recebimento); a coluna mostra as entregues dos últimos 14 dias. Cancelar é feito na tela da OS.
+- Aparelho vendido ou reservado não entra em OS interna; para reparo de aparelho já vendido use OS de cliente (o IMEI é reconhecido e ligado ao histórico do aparelho).
