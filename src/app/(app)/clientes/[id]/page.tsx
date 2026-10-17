@@ -10,7 +10,8 @@ import { requirePage } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { formatBRL } from "@/domain/money";
-import { ORDER_STATUS, SALE_STATUS, SO_STATUS } from "@/domain/constants";
+import { ORDER_STATUS, SALE_STATUS, SO_STATUS, TASK_TYPE } from "@/domain/constants";
+import { templateDef } from "@/domain/marketing";
 import { formatCEP, formatCPF, formatDate, formatPhone, whatsappLink } from "@/lib/format";
 import { CustomerActions } from "./customer-actions";
 
@@ -39,6 +40,8 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
       tradeIns: { orderBy: { createdAt: "desc" }, include: { sale: true } },
       serviceOrders: { where: { deletedAt: null }, orderBy: { createdAt: "desc" } },
       orders: { where: { deletedAt: null }, orderBy: { createdAt: "desc" } },
+      tasks: { where: { doneAt: null }, orderBy: { dueDate: "asc" }, take: 5 },
+      campaignSends: { orderBy: { createdAt: "desc" }, take: 5 },
     },
   });
   if (!c || c.deletedAt) notFound();
@@ -132,6 +135,36 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
         </Card>
 
         <div className="flex flex-col gap-6 lg:col-span-2">
+          {(c.tasks.length > 0 || c.campaignSends.length > 0) && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageCircle className="size-4" /> Relacionamento
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col divide-y text-sm">
+                {c.tasks.map((t) => (
+                  <Link key={t.id} href="/marketing" className="flex items-center justify-between gap-2 py-2 hover:underline">
+                    <span className="flex items-center gap-2">
+                      <StatusBadge value={t.type} options={TASK_TYPE} className="h-5 px-2" /> {t.title}
+                    </span>
+                    <span className="shrink-0 text-xs text-muted-foreground">{formatDate(t.dueDate)}</span>
+                  </Link>
+                ))}
+                {c.campaignSends.map((m) => (
+                  <div key={m.id} className="flex items-center justify-between gap-2 py-2">
+                    <span className="truncate text-muted-foreground" title={m.message}>
+                      WhatsApp: {templateDef(m.templateKey)?.name ?? m.templateKey}
+                    </span>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {formatDate(m.createdAt)}
+                    </span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

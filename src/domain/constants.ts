@@ -193,3 +193,11 @@ export const TONE_CLASSES: Record<Tone, string> = {
   teal: "bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300",
   pink: "bg-pink-100 text-pink-700 dark:bg-pink-950 dark:text-pink-300",
 };
+
+export const TASK_TYPE = options([
+  { value: "POS_VENDA", label: "Pós-venda", tone: "blue" },
+  { value: "ANIVERSARIO", label: "Aniversário", tone: "pink" },
+  { value: "GARANTIA", label: "Garantia", tone: "amber" },
+  { value: "UPGRADE", label: "Upgrade", tone: "purple" },
+  { value: "MANUAL", label: "Manual", tone: "gray" },
+]);
