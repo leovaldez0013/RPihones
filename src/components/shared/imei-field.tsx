@@ -7,6 +7,7 @@ import { MaskedInput } from "./inputs";
 import { BarcodeScannerButton, extractImei } from "./barcode-scanner";
 import { lookupImei } from "@/features/devices/actions";
 import { DEVICE_STATUS } from "@/domain/constants";
+import { ImeiCheckButton } from "@/components/imei/imei-result";
 
 export type ImeiLookup = {
   formatOk: boolean;
@@ -24,6 +25,9 @@ export function ImeiField({
   ignoreId,
   id = "imei",
   autoFocus,
+  checkable,
+  checkDeviceId,
+  existingIsInfo,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -31,6 +35,11 @@ export function ImeiField({
   ignoreId?: string;
   id?: string;
   autoFocus?: boolean;
+  /** mostra o botão “Consultar bloqueio” (serviço de IMEI configurado) */
+  checkable?: boolean;
+  checkDeviceId?: string | null;
+  /** IMEI já cadastrado é informação (tela de consulta), não erro */
+  existingIsInfo?: boolean;
 }) {
   const [result, setResult] = useState<ImeiLookup | null>(null);
   const [loading, setLoading] = useState(false);
@@ -91,8 +100,8 @@ export function ImeiField({
             </p>
           )}
           {duplicate && (
-            <p className="flex items-center gap-1 font-medium text-destructive">
-              <AlertCircle className="size-3.5" /> Já cadastrado: {duplicate.name} ({DEVICE_STATUS.label(duplicate.status)}
+            <p className={existingIsInfo ? "flex items-center gap-1 text-muted-foreground" : "flex items-center gap-1 font-medium text-destructive"}>
+              {existingIsInfo ? <Info className="size-3.5" /> : <AlertCircle className="size-3.5" />} {existingIsInfo ? "No sistema:" : "Já cadastrado:"} {duplicate.name} ({DEVICE_STATUS.label(duplicate.status)}
               {duplicate.deleted ? ", excluído" : ""}) —{" "}
               <Link href={`/estoque/aparelhos/${duplicate.id}`} className="underline">
                 abrir
@@ -101,6 +110,7 @@ export function ImeiField({
           )}
         </div>
       )}
+      {checkable && !loading && result?.luhnOk && <ImeiCheckButton imei={digits} deviceId={checkDeviceId ?? (duplicate ? undefined : result.existing?.id)} />}
     </div>
   );
 }

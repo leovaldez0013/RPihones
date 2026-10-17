@@ -71,6 +71,10 @@ async function buildLines(tx: Tx, data: SaleData, saleId: string | undefined, co
       if (otherActive && (otherActive.sale.status === "CONCLUIDA" || completing)) {
         throw new BusinessError(`O IMEI ${d.imei} já está na venda #${otherActive.sale.number}.`);
       }
+      const lastCheck = await tx.imeiCheck.findFirst({ where: { deviceId: d.id }, orderBy: { createdAt: "desc" } });
+      if (lastCheck?.blacklisted) {
+        throw new BusinessError(`${label} (IMEI ${d.imei}) consta como BLOQUEADO no último teste de IMEI. Venda impedida.`, "IMEI_BLOCKED");
+      }
       if (it.discount > d.salePrice) throw new BusinessError(`Desconto maior que o preço de ${label}.`);
       lines.push({
         kind: "DEVICE",
@@ -171,6 +175,8 @@ export async function saveSale(tx: Tx, data: SaleData, actor: Actor) {
   for (const t of data.tradeIns) {
     if (lines.some((l) => l.description.includes(t.imei))) throw new BusinessError("O aparelho de troca não pode ser o mesmo que está sendo vendido.");
     if (completing) await assertImeiAvailable(tx, t.imei, t.imei2);
+    const lastCheck = await tx.imeiCheck.findFirst({ where: { imei: t.imei }, orderBy: { createdAt: "desc" } });
+    if (lastCheck?.blacklisted) throw new BusinessError(`O IMEI ${t.imei} da troca consta como BLOQUEADO no teste de IMEI. Não receba este aparelho.`, "IMEI_BLOCKED");
   }
   const tradeTotal = sum(data.tradeIns.map((t) => t.finalValue));
   if (completing && data.tradeIns.length && !data.customerId) throw new BusinessError("Venda com troca precisa de cliente identificado (termo de procedência).");

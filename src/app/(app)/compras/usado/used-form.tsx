@@ -81,7 +81,7 @@ export function UsedPurchaseForm({ catalog, accounts }: { catalog: CatalogItem[]
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
             <FormField label="IMEI" required className="sm:col-span-2">
-              <ImeiField value={imei} onChange={setImei} onLookup={(r) => r.tacModel && !modelId && setModelId(r.tacModel.id)} />
+              <ImeiField checkable value={imei} onChange={setImei} onLookup={(r) => r.tacModel && !modelId && setModelId(r.tacModel.id)} />
             </FormField>
             <FormField label="Modelo" required>
               <NativeSelect value={modelId} onChange={(e) => { setModelId(e.target.value); setCapacity(""); setColor(""); }} className="h-9">

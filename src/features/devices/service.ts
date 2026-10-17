@@ -73,6 +73,8 @@ export async function createDevice(
     },
   });
   await learnTac(tx, data.imei, data.modelId);
+  // testes de IMEI feitos antes do cadastro (ex.: na avaliação da troca) passam a constar no aparelho
+  await tx.imeiCheck.updateMany({ where: { imei: data.imei, deviceId: null }, data: { deviceId: device.id } });
   await addDeviceEvent(tx, {
     deviceId: device.id,
     type: ctx.eventType ?? "ENTRADA",

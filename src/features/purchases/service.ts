@@ -194,6 +194,8 @@ export async function buyUsedDevice(tx: Tx, data: UsedData, userId: string) {
   const failed = Object.entries(data.checklist).filter(([, ok]) => !ok).map(([k]) => k);
   if (failed.includes("icloud")) throw new BusinessError("Aparelho com conta iCloud vinculada não pode ser comprado.");
   if (failed.includes("semBloqueio")) throw new BusinessError("Aparelho com bloqueio/restrição não pode ser comprado.");
+  const lastCheck = await tx.imeiCheck.findFirst({ where: { imei: data.imei }, orderBy: { createdAt: "desc" } });
+  if (lastCheck?.blacklisted) throw new BusinessError(`O IMEI ${data.imei} consta como BLOQUEADO no teste de IMEI. Não compre este aparelho.`, "IMEI_BLOCKED");
 
   const status = (settings?.tradeInDefaultStatus ?? "EM_AVALIACAO") as "EM_AVALIACAO" | "DISPONIVEL";
   const device = await createDevice(

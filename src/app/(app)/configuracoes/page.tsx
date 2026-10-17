@@ -25,7 +25,7 @@ type Section = { href: string; title: string; description: string; icon: LucideI
 const SETTINGS_SECTIONS: Section[] = [
   { href: "/configuracoes/loja", title: "Dados da loja", description: "Nome, CNPJ, endereço, logo, contatos e redes sociais", icon: Store, permission: "settings.store" },
   { href: "/configuracoes/usuarios", title: "Usuários e permissões", description: "Vendedores, gerentes, técnicos, comissões e limites de desconto", icon: Users, permission: "settings.users" },
-  { href: "/configuracoes/geral", title: "Parâmetros gerais", description: "Alerta de estoque parado, pós-venda, status de aparelho de troca", icon: SlidersHorizontal, permission: "settings.operational" },
+  { href: "/configuracoes/geral", title: "Parâmetros gerais", description: "Alerta de estoque parado, pós-venda, aparelho de troca e consulta de IMEI", icon: SlidersHorizontal, permission: "settings.operational" },
   { href: "/configuracoes/catalogo", title: "Catálogo de modelos", description: "Modelos de iPhone, cores, capacidades e tabela TAC", icon: Smartphone, permission: "catalog.edit" },
   { href: "/configuracoes/avaliacao", title: "Avaliação de troca", description: "Tabela modelo × capacidade e ajustes por bateria, grade e checklist", icon: Repeat, permission: "settings.operational" },
   { href: "/configuracoes/documentos", title: "Modelos de documentos", description: "Recibo, garantia, termo de troca, encomenda, OS e orçamento", icon: FileText, permission: "settings.operational" },

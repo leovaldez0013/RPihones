@@ -94,6 +94,8 @@ export function DeviceForm({
                     value={String(field.value ?? "")}
                     onChange={field.onChange}
                     ignoreId={defaults?.id}
+                    checkable
+                    checkDeviceId={defaults?.id}
                     autoFocus={!isEdit}
                     onLookup={(r) => {
                       if (r.tacModel && !form.getValues("modelId")) setValue("modelId", r.tacModel.id);

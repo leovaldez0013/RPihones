@@ -7,7 +7,7 @@ import { seedCustomers } from "./people";
 import { seedOpenPurchases, seedPurchasesFromDevices } from "./purchases";
 import { seedSalesHistory, seedTradeInTable } from "./sales";
 import { seedFinanceHistory } from "./finance-history";
-import { seedOrders, seedServiceOrders } from "./service";
+import { seedImeiChecks, seedOrders, seedServiceOrders } from "./service";
 
 
 async function main() {
@@ -43,6 +43,8 @@ async function main() {
   console.log(`✔ ${sos} ordens de serviço`);
   const orders = await seedOrders(ctx.users, customers);
   console.log(`✔ ${orders} encomendas`);
+  const checks = await seedImeiChecks(ctx.users);
+  console.log(`✔ ${checks} testes de IMEI (1 bloqueado, para demonstração)`);
   console.log("✅ Pronto! Login: admin@rpiphones.com.br / admin123");
 }
 

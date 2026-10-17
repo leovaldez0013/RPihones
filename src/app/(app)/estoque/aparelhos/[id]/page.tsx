@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Pencil, Printer, ScanLine, BatteryMedium, ShieldCheck, Wrench } from "lucide-react";
+import { Pencil, Printer, ScanLine, BatteryMedium, ShieldAlert, ShieldCheck, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/page-header";
@@ -12,7 +12,8 @@ import { can } from "@/lib/permissions";
 import { getDevice } from "@/features/devices/queries";
 import { DEVICE_CONDITION, DEVICE_ORIGIN, DEVICE_STATUS, SALE_STATUS, SO_STATUS } from "@/domain/constants";
 import { formatBRL } from "@/domain/money";
-import { daysSince, formatDate, formatPct } from "@/lib/format";
+import { daysSince, formatDate, formatDateTime, formatPct } from "@/lib/format";
+import { verdict } from "@/features/imei/service";
 import { DeleteDeviceButton } from "./delete-button";
 
 export const metadata: Metadata = { title: "Aparelho" };
@@ -40,6 +41,8 @@ export default async function DevicePage({ params }: { params: Promise<{ id: str
   if (!d) notFound();
   const canEdit = can(user.role, "devices.edit") && !d.deletedAt;
   const margin = d.realCost != null ? d.salePrice - d.realCost : null;
+  const lastCheck = d.imeiChecks[0];
+  const blocked = lastCheck && verdict(lastCheck) === "BLOQUEADO";
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -89,6 +92,18 @@ export default async function DevicePage({ params }: { params: Promise<{ id: str
           </>
         }
       />
+
+      {blocked && (
+        <div role="alert" className="mb-6 flex items-start gap-3 rounded-2xl border-2 border-red-500 bg-red-500/10 p-4 text-red-900 dark:text-red-100">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-red-600 text-white">
+            <ShieldAlert className="size-5" />
+          </span>
+          <div>
+            <p className="font-semibold">IMEI bloqueado na última consulta ({formatDateTime(lastCheck.createdAt)})</p>
+            <p className="text-sm opacity-90">Consta em lista de bloqueio (perda/roubo). Não venda este aparelho até resolver a situação com o fornecedor.</p>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="flex flex-col gap-6 lg:col-span-2">
@@ -211,6 +226,31 @@ export default async function DevicePage({ params }: { params: Promise<{ id: str
               )}
             </CardContent>
           </Card>
+
+          {d.imeiChecks.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Testes de IMEI</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col divide-y text-sm">
+                {d.imeiChecks.map((c) => {
+                  const v = verdict(c);
+                  return (
+                    <div key={c.id} className="flex items-center justify-between gap-2 py-2">
+                      <span className="text-xs text-muted-foreground">
+                        {formatDateTime(c.createdAt)}
+                        {c.user && ` · ${c.user.name.split(" ")[0]}`}
+                        {c.provider === "mock" && " · demo"}
+                      </span>
+                      <StatusBadge tone={v === "BLOQUEADO" ? "red" : v === "ATENCAO" ? "amber" : v === "LIVRE" ? "green" : "gray"}>
+                        {v === "BLOQUEADO" ? "Bloqueado" : v === "ATENCAO" ? "Buscar iPhone ativo" : v === "LIVRE" ? "Sem restrição" : "Validação local"}
+                      </StatusBadge>
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader>

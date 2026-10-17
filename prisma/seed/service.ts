@@ -6,7 +6,7 @@ import { soCreateSchema } from "../../src/features/service-orders/schemas";
 import { addPart, createServiceOrder, deliverServiceOrder, moveServiceOrder } from "../../src/features/service-orders/service";
 import { orderSchema } from "../../src/features/orders/schemas";
 import { cancelOrder, reserveForOrder, saveOrder, setOrderStatus } from "../../src/features/orders/service";
-import { addDays, chance, daysAgo, int, pick } from "./util";
+import { addDays, chance, daysAgo, int, pick, rand } from "./util";
 
 const DAY = 86400000;
 const okChecklist = () => Object.fromEntries(TRADE_IN_CHECKLIST.map((c) => [c.key, true]));
@@ -159,4 +159,26 @@ export async function seedOrders(users: { vendedor1: string; vendedor2: string }
   );
   await db.$transaction((tx) => cancelOrder(tx, { id: c.id, reason: "Cliente comprou em outro lugar", refund: true }, users.vendedor1));
   return count + 1;
+}
+
+/** Histórico de testes de IMEI (provedor de demonstração), com um aparelho bloqueado para o alerta vermelho. */
+export async function seedImeiChecks(users: { gerente: string; vendedor1: string; tecnico: string }) {
+  const { checkImei } = await import("../../src/features/imei/service");
+  const { mockProvider } = await import("../../src/features/imei/providers");
+  const devices = await db.device.findMany({ where: { deletedAt: null }, orderBy: { entryDate: "desc" }, take: 60 });
+  const clean = devices.filter((d) => d.imei.charAt(13) !== "9").slice(0, 14);
+  const blocked = devices.find((d) => d.status === "DISPONIVEL" && d.imei.charAt(13) === "9");
+  let count = 0;
+  for (const d of [...clean, ...(blocked ? [blocked] : [])]) {
+    const r = await checkImei(db, { imei: d.imei, deviceId: d.id }, pick([users.gerente, users.vendedor1, users.tecnico]), mockProvider);
+    // horário comercial, entre a entrada do aparelho e hoje
+    const start = Math.max(d.entryDate.getTime(), Date.now() - 20 * DAY);
+    const when = new Date(start + rand() * (Date.now() - start));
+    when.setHours(int(9, 18), int(0, 59));
+    if (when.getTime() > Date.now()) when.setDate(when.getDate() - 1);
+    await db.imeiCheck.update({ where: { id: r.id }, data: { createdAt: when } });
+    await db.deviceEvent.updateMany({ where: { refType: "IMEI", refId: r.id }, data: { createdAt: when } });
+    count++;
+  }
+  return count;
 }
