@@ -49,7 +49,7 @@ export function TaskBoard({ rows }: { rows: TaskRow[] }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1">
+        <div className="-mx-1 flex max-w-full min-w-0 gap-1.5 overflow-x-auto px-1">
           {[{ value: "TODAS", label: "Todas" }, ...TASK_TYPE.list].map((t) => (
             <button
               key={t.value}

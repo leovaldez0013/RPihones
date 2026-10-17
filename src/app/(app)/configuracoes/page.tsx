@@ -12,6 +12,8 @@ import {
   ShieldCheck,
   CreditCard,
   ChevronRight,
+  DatabaseBackup,
+  MessageSquareText,
   type LucideIcon,
 } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
@@ -32,8 +34,15 @@ const SETTINGS_SECTIONS: Section[] = [
   { href: "/financeiro/contas", title: "Taxas da maquininha", description: "Taxa por parcela, juros repassados ao cliente e prazo de recebimento", icon: CreditCard, permission: "finance.view" },
   { href: "/configuracoes/comissoes", title: "Comissões", description: "% por vendedor e categoria (novo, seminovo, acessório, serviço)", icon: Percent, permission: "settings.operational" },
   { href: "/configuracoes/garantias", title: "Prazos de garantia", description: "Dias de garantia por condição e cláusulas de exclusão", icon: ShieldCheck, permission: "settings.operational" },
+  { href: "/marketing/modelos", title: "Mensagens de WhatsApp", description: "Pós-venda, aniversário, garantia e campanhas", icon: MessageSquareText, permission: "settings.operational" },
+  { href: "/api/backup", title: "Backup dos dados", description: "Baixar todas as informações do sistema (JSON)", icon: DatabaseBackup, permission: "backup.export" },
   { href: "/configuracoes/auditoria", title: "Log de auditoria", description: "Quem fez o quê e quando", icon: History, permission: "audit.view" },
 ];
+
+/** Rotas de API (download do backup) não passam pelo roteador do Next. */
+function Item({ href, ...props }: React.ComponentProps<"a"> & { href: string }) {
+  return href.startsWith("/api") ? <a href={href} download {...props} /> : <Link href={href} {...props} />;
+}
 
 export default async function SettingsPage() {
   const user = await requirePage("settings.operational");
@@ -43,7 +52,7 @@ export default async function SettingsPage() {
       <PageHeader title="Configurações" description="Ajuste o sistema ao jeito da sua loja." />
       <div className="grid gap-3 sm:grid-cols-2">
         {sections.map((s) => (
-          <Link
+          <Item
             key={s.href}
             href={s.href}
             className="group flex items-center gap-4 rounded-2xl border bg-card p-4 shadow-soft transition hover:-translate-y-0.5 hover:border-primary/30"
@@ -56,7 +65,7 @@ export default async function SettingsPage() {
               <p className="text-sm text-muted-foreground">{s.description}</p>
             </div>
             <ChevronRight className="size-4 text-muted-foreground transition group-hover:translate-x-0.5" />
-          </Link>
+          </Item>
         ))}
       </div>
     </div>

@@ -39,12 +39,14 @@ export function DevicesTable({
   showCost,
   initialSearch,
   initialStatus,
+  initialStale,
 }: {
   rows: DeviceRow[];
   staleDays: number;
   showCost: boolean;
   initialSearch?: string;
   initialStatus?: string;
+  initialStale?: boolean;
 }) {
   const [status, setStatus] = useState(initialStatus ?? "ATIVOS");
   const [model, setModel] = useState("");
@@ -52,7 +54,7 @@ export function DevicesTable({
   const [color, setColor] = useState("");
   const [condition, setCondition] = useState("");
   const [battery, setBattery] = useState("");
-  const [staleOnly, setStaleOnly] = useState(false);
+  const [staleOnly, setStaleOnly] = useState(!!initialStale);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const models = useMemo(() => [...new Set(rows.map((r) => r.model))].sort(), [rows]);

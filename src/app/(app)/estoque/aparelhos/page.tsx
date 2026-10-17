@@ -11,7 +11,7 @@ import { DevicesTable } from "./devices-table";
 
 export const metadata: Metadata = { title: "Estoque de aparelhos" };
 
-export default async function DevicesPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string }> }) {
+export default async function DevicesPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string; filtro?: string }> }) {
   const user = await requirePage("devices.view");
   const sp = await searchParams;
   const [rows, settings] = await Promise.all([
@@ -39,6 +39,7 @@ export default async function DevicesPage({ searchParams }: { searchParams: Prom
         showCost={can(user.role, "devices.viewCost")}
         initialSearch={sp.q}
         initialStatus={sp.status}
+        initialStale={sp.filtro === "parados"}
       />
     </div>
   );

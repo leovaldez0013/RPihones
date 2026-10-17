@@ -78,7 +78,7 @@ export default async function MarketingTasksPage() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
-      <div className="lg:col-span-2">
+      <div className="min-w-0 lg:col-span-2">
         <TaskBoard rows={rows} />
       </div>
       <div className="flex flex-col gap-6">

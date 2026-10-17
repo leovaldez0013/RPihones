@@ -6,6 +6,23 @@ Sistema web para lojas de iPhones novos e seminovos e acessórios: estoque por I
 
 Next.js 15 (App Router) + TypeScript · Tailwind CSS v4 + shadcn/ui · Prisma (SQLite em dev / PostgreSQL em produção) · Auth.js v5 · Zod + React Hook Form · TanStack Table · Recharts · @react-pdf/renderer · date-fns (pt-BR) · Vitest.
 
+## O que o sistema faz
+
+| Módulo | Onde | Destaques |
+|---|---|---|
+| Dashboard | `/dashboard` | Vendas do dia e do mês com comparação, lucro, gráfico de 30 dias, mais vendidos, estoque parado, OS, encomendas, contas da semana, caixa, aniversariantes e tarefas — cada perfil vê só o que lhe cabe |
+| PDV | `/vendas/nova` | Leitor de código de barras, vários pagamentos, parcelado com juros, troca com avaliação sugerida, desconto com aprovação do gerente, orçamento |
+| Estoque | `/estoque` | Aparelhos por IMEI (Luhn + TAC), acessórios e peças, etiquetas com código de barras/QR, alerta de parados |
+| Compras | `/compras` | Pedidos a fornecedor com recebimento parcial e compra de usado de pessoa física |
+| Encomendas | `/encomendas` | Sinal, aviso automático quando chega aparelho compatível, reserva e entrega pelo PDV |
+| Ordens de serviço | `/os` | Kanban arrastável, peças com baixa no estoque, custo somado ao aparelho, cobrança no financeiro |
+| Teste de IMEI | `/imei` | Validação local e consulta de bloqueio por provedor configurável |
+| Clientes e marketing | `/clientes`, `/marketing` | Ficha completa, tarefas de pós-venda, aniversários, segmentos, campanhas por WhatsApp (LGPD) |
+| Documentos | em cada venda/OS/encomenda | Modelos editáveis, PDF, assinatura na tela, link para o cliente |
+| Financeiro | `/financeiro` | Contas a pagar/receber, caixa por turno, fluxo de caixa, DRE, comissões, taxas da maquininha |
+| Relatórios | `/relatorios` | Vendas, margem por modelo, curva ABC, giro de estoque, trocas, formas de pagamento e vendedores — PDF, Excel e CSV |
+| Configurações | `/configuracoes` | Loja, usuários, parâmetros, catálogo, avaliação de troca, documentos, comissões, garantias, auditoria e backup |
+
 ## Como rodar (desenvolvimento)
 
 Pré-requisito: **Node.js 20+** (testado com Node 24).
@@ -115,3 +132,6 @@ A matriz completa está em `src/lib/permissions.ts`. Toda ação do servidor val
 - **WhatsApp sem API paga:** cada envio abre o `wa.me` com a mensagem pronta para um cliente por vez (sem disparo em massa, que viola as regras do WhatsApp) e fica registrado no histórico do cliente.
 - **Tarefas automáticas** (aniversários nos próximos 3 dias e garantias vencendo) são geradas de forma idempotente ao abrir Marketing/Dashboard (no máximo a cada 10 min) e pela rota `/api/cron/tarefas` (Vercel Cron diário via `vercel.json`; defina `CRON_SECRET`). O pós-venda D+N nasce na própria venda.
 - Vendedor vê as próprias tarefas e as sem responsável; gerente e admin veem todas.
+- **Dashboard:** comparações são *hoje × ontem* e *mês até hoje × mesmo período do mês anterior* (comparação justa no meio do mês). Vendedor vê só os próprios números e a comissão; técnico vê o painel de OS.
+- **Relatórios:** o período é inclusivo (de 1º até hoje por padrão), no fuso de São Paulo. Excel/CSV saem com valores em reais (número) para somar na planilha; o PDF é gerado no servidor em A4 (paisagem quando há muitas colunas).
+- **Backup:** Configurações → Backup dos dados baixa um JSON com todas as tabelas (só administrador; senhas apenas como hash e chave da API de IMEI omitida). Em produção, use também o backup automático do Neon/Supabase.
