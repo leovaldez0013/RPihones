@@ -23,7 +23,7 @@ async function main() {
   console.log(`✔ ${Object.keys(ctx.users).length} usuários`);
   const accounts = await seedFinanceBase(db, { demo: DEMO });
   console.log("✔ Plano de contas, contas financeiras, taxas da maquininha e garantias");
-  const models = await seedCatalog(db);
+  const models = await seedCatalog(db, { demo: DEMO });
   console.log(`✔ ${Object.keys(models).length} modelos de iPhone`);
   await seedTradeInTable();
   console.log("✔ Tabela de avaliação de troca e regras de comissão");

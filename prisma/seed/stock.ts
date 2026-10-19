@@ -3,6 +3,8 @@ import { CATALOG } from "../data/catalog";
 import { makeImei } from "../../src/domain/imei";
 import { chance, commercial, daysAgo, int, pick } from "./util";
 
+export const DEMO_TAC_NOTE = "TAC fictício (demonstração)";
+
 /** Preço base (seminovo, menor capacidade) em reais. */
 export const BASE_PRICE: Record<string, number> = {
   "iPhone 11": 1690, "iPhone 11 Pro": 2090, "iPhone 11 Pro Max": 2390,
@@ -12,6 +14,8 @@ export const BASE_PRICE: Record<string, number> = {
   "iPhone 15": 4290, "iPhone 15 Plus": 4690, "iPhone 15 Pro": 5690, "iPhone 15 Pro Max": 6490,
   "iPhone 16": 5290, "iPhone 16 Plus": 5790, "iPhone 16 Pro": 6990, "iPhone 16 Pro Max": 7990, "iPhone 16e": 3990,
   "iPhone 17": 6490, "iPhone Air": 7990, "iPhone 17 Pro": 9490, "iPhone 17 Pro Max": 10690,
+  // estimativa (lançamento set/2026): ajuste a tabela de avaliação em Configurações
+  "iPhone 18 Pro": 10490, "iPhone 18 Pro Max": 11690, "iPhone Duo": 13990,
 };
 
 export function priceFor(model: string, capacities: string[], capacity: string, condition: string): number {
@@ -23,7 +27,7 @@ export function priceFor(model: string, capacities: string[], capacity: string, 
   return commercial(reais * 100);
 }
 
-export async function seedCatalog(db: PrismaClient) {
+export async function seedCatalog(db: PrismaClient, opts: { demo: boolean }) {
   const models: Record<string, { id: string; tac: string; colors: string[]; capacities: string[]; year: number }> = {};
   let i = 0;
   for (const m of CATALOG) {
@@ -32,9 +36,9 @@ export async function seedCatalog(db: PrismaClient) {
       update: {},
       create: { ...m, colors: JSON.stringify(m.colors), capacities: JSON.stringify(m.capacities), sortOrder: i },
     });
-    // TAC fictício só para a demonstração (o sistema aprende os reais a cada cadastro)
+    // TAC fictício só na demonstração: no uso real o sistema aprende os TACs verdadeiros a cada cadastro
     const tac = `35${String(310000 + i * 1373).padStart(6, "0")}`;
-    await db.tacEntry.upsert({ where: { tac }, update: {}, create: { tac, modelId: saved.id, note: "TAC fictício (demonstração)" } });
+    if (opts.demo) await db.tacEntry.upsert({ where: { tac }, update: {}, create: { tac, modelId: saved.id, note: DEMO_TAC_NOTE } });
     models[m.name] = { id: saved.id, tac, colors: m.colors, capacities: m.capacities, year: m.year };
     i++;
   }

@@ -75,6 +75,7 @@ Quer conhecer o sistema com dados fictícios (6 meses de vendas, OS, encomendas�
 | `npm run db:seed:demo` | Dados de demonstração (em banco vazio) |
 | `npm run db:reset` | **Apaga tudo** e roda o seed limpo |
 | `npm run db:reset:demo` | **Apaga tudo** e roda o seed de demonstração |
+| `npm run catalog:sync` | Adiciona ao banco os modelos novos de `prisma/data/catalog.ts` (ex.: iPhone 18) sem apagar nada |
 | `npm run db:studio` | Abre o Prisma Studio |
 | `npm run db:postgres` | Troca o provider do schema para PostgreSQL |
 
@@ -139,4 +140,6 @@ A matriz completa está em `src/lib/permissions.ts`. Toda ação do servidor val
 - **Dashboard:** comparações são *hoje × ontem* e *mês até hoje × mesmo período do mês anterior* (comparação justa no meio do mês). Vendedor vê só os próprios números e a comissão; técnico vê o painel de OS.
 - **Relatórios:** o período é inclusivo (de 1º até hoje por padrão), no fuso de São Paulo. Excel/CSV saem com valores em reais (número) para somar na planilha; o PDF é gerado no servidor em A4 (paisagem quando há muitas colunas).
 - **Backup:** Configurações → Backup dos dados baixa um JSON com todas as tabelas (só administrador; senhas apenas como hash e chave da API de IMEI omitida). Em produção, use também o backup automático do Neon/Supabase.
-- **Seed limpo por padrão:** o banco inicial traz só o que é configuração (usuários, loja, catálogo de modelos e TACs, taxas da maquininha, tabela de avaliação, comissões, garantias) e o cadastro de acessórios/peças. Aparelhos, fornecedores, OS, clientes e movimentações vêm apenas na demonstração (`db:seed:demo`).
+- **Seed limpo por padrão:** o banco inicial traz só o que é configuração (usuários, loja, catálogo de modelos, taxas da maquininha, tabela de avaliação, comissões, garantias) e o cadastro de acessórios/peças. Aparelhos, fornecedores, OS, clientes e movimentações vêm apenas na demonstração (`db:seed:demo`).
+- **Novos modelos de iPhone:** inclua em `prisma/data/catalog.ts` e rode `npm run catalog:sync` — cria o modelo e um valor base de troca estimado (revise em Configurações → Avaliação de troca). Também dá para cadastrar pela tela em Configurações → Catálogo.
+- **TACs:** no uso real a tabela começa vazia e o sistema aprende o TAC verdadeiro de cada modelo a cada aparelho cadastrado; TACs fictícios existem só na demonstração.

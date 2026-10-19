@@ -16,6 +16,9 @@ const c16Pro = ["Titânio-deserto", "Titânio natural", "Titânio branco", "Tit�
 const c17 = ["Preto", "Branco", "Azul-névoa", "Lavanda", "Sálvia"];
 const cAir = ["Preto-espacial", "Branco-nuvem", "Dourado-claro", "Azul-céu"];
 const c17Pro = ["Laranja-cósmico", "Azul-intenso", "Prateado"];
+// nomes oficiais da Apple Brasil (apple.com/br/iphone-18-pro/specs)
+const c18Pro = ["Preto", "Prateado", "Glacial", "Bordô"];
+const cDuo = ["Branco-estrela", "Céu noturno"];
 
 export const CATALOG: CatalogModel[] = [
   { name: "iPhone 11", family: "iPhone 11", year: 2019, colors: c11, capacities: ["64GB", "128GB", "256GB"] },
@@ -46,4 +49,7 @@ export const CATALOG: CatalogModel[] = [
   { name: "iPhone Air", family: "iPhone 17", year: 2025, colors: cAir, capacities: ["256GB", "512GB", "1TB"] },
   { name: "iPhone 17 Pro", family: "iPhone 17", year: 2025, colors: c17Pro, capacities: ["256GB", "512GB", "1TB"] },
   { name: "iPhone 17 Pro Max", family: "iPhone 17", year: 2025, colors: c17Pro, capacities: ["256GB", "512GB", "1TB", "2TB"] },
+  { name: "iPhone 18 Pro", family: "iPhone 18", year: 2026, colors: c18Pro, capacities: ["256GB", "512GB", "1TB", "2TB"] },
+  { name: "iPhone 18 Pro Max", family: "iPhone 18", year: 2026, colors: c18Pro, capacities: ["256GB", "512GB", "1TB", "2TB"] },
+  { name: "iPhone Duo", family: "iPhone 18", year: 2026, colors: cDuo, capacities: ["256GB", "512GB", "1TB", "2TB"] },
 ];

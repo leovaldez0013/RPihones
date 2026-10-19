@@ -52,19 +52,25 @@ async function moveSaleTo(saleId: string, when: Date) {
 
 const allOk = () => Object.fromEntries(TRADE_IN_CHECKLIST.map((c) => [c.key, true]));
 
-export async function seedTradeInTable() {
+/** Cria o valor base de troca (seminovo) para modelos/capacidades que ainda não têm — não altera os existentes. */
+export async function seedTradeInPrices() {
   const models = await db.deviceModel.findMany();
+  let created = 0;
   for (const m of models) {
     const caps: string[] = JSON.parse(m.capacities);
     for (const [i, cap] of caps.entries()) {
       const base = Math.round(((BASE_PRICE[m.name] ?? 3000) * (1 + i * 0.12) * 0.6) / 50) * 50 * 100;
-      await db.tradeInPrice.upsert({
-        where: { modelId_capacity_condition: { modelId: m.id, capacity: cap, condition: "SEMINOVO" } },
-        create: { modelId: m.id, capacity: cap, condition: "SEMINOVO", baseValue: base },
-        update: {},
-      });
+      const exists = await db.tradeInPrice.findUnique({ where: { modelId_capacity_condition: { modelId: m.id, capacity: cap, condition: "SEMINOVO" } } });
+      if (exists) continue;
+      await db.tradeInPrice.create({ data: { modelId: m.id, capacity: cap, condition: "SEMINOVO", baseValue: base } });
+      created++;
     }
   }
+  return created;
+}
+
+export async function seedTradeInTable() {
+  await seedTradeInPrices();
   await db.commissionRule.createMany({
     data: [
       { userId: null, category: "APARELHO_NOVO", pct: 1 },
