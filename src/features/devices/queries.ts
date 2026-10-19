@@ -3,7 +3,7 @@ import { db, parseJson } from "@/lib/db";
 import { can } from "@/lib/permissions";
 import { daysSince } from "@/lib/format";
 
-export type CatalogItem = { id: string; name: string; family: string; colors: string[]; capacities: string[] };
+export type CatalogItem = { id: string; name: string; family: string; colors: string[]; capacities: string[]; esimOnly: boolean };
 
 export async function getCatalog(includeInactive = false): Promise<CatalogItem[]> {
   const models = await db.deviceModel.findMany({
@@ -16,12 +16,13 @@ export async function getCatalog(includeInactive = false): Promise<CatalogItem[]
     family: m.family,
     colors: parseJson<string[]>(m.colors, []),
     capacities: parseJson<string[]>(m.capacities, []),
+    esimOnly: m.esimOnly,
   }));
 }
 
 export type DeviceRow = {
   id: string;
-  imei: string;
+  imei: string | null;
   imei2: string | null;
   serial: string | null;
   modelId: string;

@@ -10,6 +10,7 @@ import { addDeviceEvent } from "@/features/devices/service";
 import { createEntry, defaultAccountId, registerReceipt } from "@/features/finance/service";
 import { generateOrderDoc } from "@/features/documents/service";
 import type { orderSchema } from "./schemas";
+import { imeiText } from "@/lib/format";
 
 type OrderData = z.output<typeof orderSchema>;
 
@@ -118,7 +119,7 @@ export async function reserveForOrder(tx: Tx, orderId: string, deviceId: string,
   await tx.device.update({ where: { id: d.id }, data: { status: "RESERVADO", reservedForOrderId: o.id, reservedCustomerId: o.customerId } });
   await tx.order.update({ where: { id: o.id }, data: { deviceId: d.id, status: o.status === "CLIENTE_AVISADO" ? o.status : "CHEGOU" } });
   await addDeviceEvent(tx, { deviceId: d.id, type: "RESERVA", description: `Reservado para a encomenda #${o.number}`, userId, refType: "ENCOMENDA", refId: o.id });
-  await audit(tx, { userId, action: "order.reserve", entity: "Order", entityId: o.id, summary: `Encomenda #${o.number}: reservado ${d.model.name} IMEI ${d.imei}` });
+  await audit(tx, { userId, action: "order.reserve", entity: "Order", entityId: o.id, summary: `Encomenda #${o.number}: reservado ${d.model.name} ${imeiText(d.imei)}` });
 }
 
 export async function releaseOrderDevice(tx: Tx, orderId: string, userId: string) {

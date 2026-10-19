@@ -143,7 +143,7 @@ export function DevicesTable({
               {r.model} <span className="text-muted-foreground">{r.capacity}</span>
             </p>
             <p className="text-xs text-muted-foreground">
-              {r.color} · <span className="font-mono">{r.imei}</span>
+              {r.color} · {r.imei ? <span className="font-mono">{r.imei}</span> : <span className="font-medium text-amber-600 dark:text-amber-400">Sem IMEI</span>}
             </p>
           </Link>
         );
@@ -311,7 +311,7 @@ export function DevicesTable({
         data={filtered}
         initialSearch={initialSearch}
         searchPlaceholder="IMEI, modelo, cor, série…"
-        searchText={(r) => `${r.imei} ${r.imei2 ?? ""} ${r.serial ?? ""} ${r.model} ${r.capacity} ${r.color} ${r.supplier ?? ""}`}
+        searchText={(r) => `${r.imei ?? "sem imei"} ${r.imei2 ?? ""} ${r.serial ?? ""} ${r.model} ${r.capacity} ${r.color} ${r.supplier ?? ""}`}
         rowHref={(r) => `/estoque/aparelhos/${r.id}`}
         rowClassName={(r) => (active(r) && r.daysInStock > staleDays ? "bg-amber-50/50 dark:bg-amber-950/10" : undefined)}
         toolbar={
@@ -328,7 +328,7 @@ export function DevicesTable({
           { header: "Modelo", value: (r) => r.model },
           { header: "Capacidade", value: (r) => r.capacity },
           { header: "Cor", value: (r) => r.color },
-          { header: "IMEI", value: (r) => r.imei },
+          { header: "IMEI", value: (r) => r.imei ?? "Sem IMEI" },
           { header: "IMEI 2", value: (r) => r.imei2 ?? "" },
           { header: "Série", value: (r) => r.serial ?? "" },
           { header: "Condição", value: (r) => DEVICE_CONDITION.label(r.condition) },

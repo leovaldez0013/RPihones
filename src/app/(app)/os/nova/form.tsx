@@ -17,8 +17,9 @@ import { DeviceChecklist, emptyChecklist } from "@/components/forms/device-check
 import { DEVICE_STATUS, SO_PRIORITY } from "@/domain/constants";
 import { cn } from "@/lib/utils";
 import { createServiceOrderAction } from "@/features/service-orders/actions";
+import { imeiText } from "@/lib/format";
 
-type DeviceOption = { id: string; label: string; imei: string; status: string; battery: number | null };
+type DeviceOption = { id: string; label: string; imei: string | null; status: string; battery: number | null };
 
 export function NewServiceOrderForm({
   technicians,
@@ -54,7 +55,7 @@ export function NewServiceOrderForm({
   const selected = devices.find((d) => d.id === deviceId);
   const matches = useMemo(() => {
     const term = deviceQ.trim().toLowerCase();
-    const list = term ? devices.filter((d) => `${d.label} ${d.imei}`.toLowerCase().includes(term)) : devices;
+    const list = term ? devices.filter((d) => `${d.label} ${d.imei ?? ""}`.toLowerCase().includes(term)) : devices;
     return list.slice(0, 8);
   }, [devices, deviceQ]);
 
@@ -116,7 +117,7 @@ export function NewServiceOrderForm({
                     <Smartphone className="size-5 text-primary" />
                     <span>
                       <span className="block font-medium">{selected.label}</span>
-                      <span className="block font-mono text-xs text-muted-foreground">IMEI {selected.imei}</span>
+                      <span className="block font-mono text-xs text-muted-foreground">{imeiText(selected.imei)}</span>
                     </span>
                   </span>
                   <Button variant="ghost" size="icon" onClick={() => setDeviceId(null)} aria-label="Trocar aparelho">
@@ -136,7 +137,7 @@ export function NewServiceOrderForm({
                         <span>
                           <span className="block font-medium">{d.label}</span>
                           <span className="block font-mono text-xs text-muted-foreground">
-                            {d.imei}
+                            {d.imei ?? "Sem IMEI"}
                             {d.battery != null && ` · bateria ${d.battery}%`}
                           </span>
                         </span>

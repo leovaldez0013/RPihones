@@ -1,14 +1,15 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Controller } from "react-hook-form";
 import { toast } from "sonner";
-import { Loader2, Save } from "lucide-react";
+import { AlertTriangle, Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { FormField, MoneyInput, NativeSelect } from "@/components/shared/inputs";
 import { ImeiField } from "@/components/shared/imei-field";
 import { PhotoUpload } from "@/components/shared/photo-upload";
@@ -25,16 +26,18 @@ export function DeviceForm({
   catalog,
   suppliers,
   defaults,
+  initialImei,
 }: {
   catalog: CatalogItem[];
   suppliers: { id: string; name: string }[];
   defaults?: DeviceInput;
+  initialImei?: string;
 }) {
   const router = useRouter();
   const isEdit = !!defaults?.id;
   const form = useZodForm(deviceSchema, {
     defaultValues: defaults ?? {
-      imei: "",
+      imei: initialImei ?? "",
       imei2: "",
       serial: "",
       modelId: "",
@@ -68,14 +71,22 @@ export function DeviceForm({
   }, [catalog]);
 
   const margin = price - cost;
+  // modelo que o TAC do IMEI costuma indicar (aviso de divergência)
+  const [tacModel, setTacModel] = useState<{ id: string; name: string } | null>(null);
+  const [mismatch, setMismatch] = useState<{ message: string; values: DeviceInput } | null>(null);
 
-  const onSubmit = handleSubmit(async (values) => {
-    const res = await saveDevice({ ...values, id: defaults?.id });
-    if (!res.ok) return toast.error(res.error);
+  async function save(values: DeviceInput, confirmTacMismatch = false) {
+    const res = await saveDevice({ ...values, id: defaults?.id, confirmTacMismatch });
+    if (!res.ok) {
+      if (res.code === "TAC_MISMATCH") return setMismatch({ message: res.error, values });
+      return toast.error(res.error);
+    }
     toast.success(isEdit ? "Aparelho atualizado" : "Aparelho cadastrado no estoque");
     router.push(`/estoque/aparelhos/${res.data.id}`);
     router.refresh();
-  }, toastFirstError);
+  }
+
+  const onSubmit = handleSubmit((values) => save(values as DeviceInput), toastFirstError);
 
   return (
     <form onSubmit={onSubmit} className="grid gap-6 lg:grid-cols-3">
@@ -85,7 +96,7 @@ export function DeviceForm({
             <CardTitle>Identificação</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
-            <FormField label="IMEI" required error={errors.imei?.message} className="sm:col-span-2">
+            <FormField label="IMEI" hint="Opcional — pode ser informado depois, editando o aparelho." error={errors.imei?.message} className="sm:col-span-2">
               <Controller
                 control={control}
                 name="imei"
@@ -98,7 +109,12 @@ export function DeviceForm({
                     checkDeviceId={defaults?.id}
                     autoFocus={!isEdit}
                     onLookup={(r) => {
-                      if (r.tacModel && !form.getValues("modelId")) setValue("modelId", r.tacModel.id);
+                      setTacModel(r.tacModel);
+                      if (r.tacModel && !form.getValues("modelId")) {
+                        setValue("modelId", r.tacModel.id);
+                        setValue("capacity", "");
+                        setValue("color", "");
+                      }
                     }}
                   />
                 )}
@@ -132,6 +148,12 @@ export function DeviceForm({
                 ))}
               </NativeSelect>
             </FormField>
+            {model?.esimOnly && <p className="text-xs text-muted-foreground sm:col-span-2">{model.name}: somente eSIM (sem chip físico).</p>}
+            {tacModel && modelId && tacModel.id !== modelId && (
+              <p className="flex items-center gap-1.5 rounded-xl bg-amber-500/10 px-3 py-2 text-sm text-amber-800 sm:col-span-2 dark:text-amber-300">
+                <AlertTriangle className="size-4 shrink-0" /> Este IMEI costuma ser do {tacModel.name}. Confira o modelo antes de salvar.
+              </p>
+            )}
             <FormField label="Capacidade" required error={errors.capacity?.message} className="sm:col-span-2">
               <Controller
                 control={control}
@@ -264,6 +286,26 @@ export function DeviceForm({
           {isEdit ? "Salvar alterações" : "Cadastrar no estoque"}
         </Button>
       </div>
+      <AlertDialog open={!!mismatch} onOpenChange={(o) => !o && setMismatch(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Modelo diferente do esperado</AlertDialogTitle>
+            <AlertDialogDescription>{mismatch?.message} O modelo escolhido será salvo e a tabela TAC continua como está.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Revisar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const v = mismatch?.values;
+                setMismatch(null);
+                if (v) save(v, true);
+              }}
+            >
+              Confirmar e salvar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </form>
   );
 }

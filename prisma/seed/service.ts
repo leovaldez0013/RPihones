@@ -165,7 +165,7 @@ export async function seedOrders(users: { vendedor1: string; vendedor2: string }
 export async function seedImeiChecks(users: { gerente: string; vendedor1: string; tecnico: string }) {
   const { checkImei } = await import("../../src/features/imei/service");
   const { mockProvider } = await import("../../src/features/imei/providers");
-  const devices = await db.device.findMany({ where: { deletedAt: null }, orderBy: { entryDate: "desc" }, take: 60 });
+  const devices = (await db.device.findMany({ where: { deletedAt: null, imei: { not: null } }, orderBy: { entryDate: "desc" }, take: 60 })).map((d) => ({ ...d, imei: d.imei! }));
   const clean = devices.filter((d) => d.imei.charAt(13) !== "9").slice(0, 14);
   const blocked = devices.find((d) => d.status === "DISPONIVEL" && d.imei.charAt(13) === "9");
   let count = 0;

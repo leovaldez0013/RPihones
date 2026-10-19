@@ -57,7 +57,7 @@ export default async function DevicePage({ params }: { params: Promise<{ id: str
         }
         description={
           <span>
-            {d.color} · IMEI <span className="font-mono">{d.imei}</span>
+            {d.color} · {d.imei ? <>IMEI <span className="font-mono">{d.imei}</span></> : <StatusBadge tone="amber">Sem IMEI — edite para informar</StatusBadge>}
           </span>
         }
         actions={

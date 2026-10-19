@@ -4,7 +4,9 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { requirePage } from "@/lib/session";
-import { db } from "@/lib/db";
+import Link from "next/link";
+import { FlaskConical } from "lucide-react";
+import { db, isSimulation } from "@/lib/db";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requirePage();
@@ -24,6 +26,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <SidebarProvider defaultOpen={defaultOpen}>
       <AppSidebar role={user.role} storeName={store?.name ?? "RP iPhones"} />
       <SidebarInset className="min-w-0">
+        {isSimulation() && (
+          <div role="status" className="sticky top-0 z-40 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-amber-400 px-4 py-1.5 text-center text-sm font-medium text-amber-950">
+            <span className="inline-flex items-center gap-1.5 font-bold tracking-wide">
+              <FlaskConical className="size-4" /> MODO SIMULAÇÃO
+            </span>
+            <span className="hidden sm:inline">Dados fictícios, separados do estoque real.</span>
+            <Link href="/simulacao" className="underline underline-offset-2">
+              Resumo e sair
+            </Link>
+          </div>
+        )}
         <Topbar
           user={user}
           notifications={notifications.map((n) => ({

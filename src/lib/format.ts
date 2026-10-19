@@ -88,3 +88,8 @@ export function whatsappLink(phone: string | null | undefined, message: string):
   if (d && !d.startsWith("55")) d = `55${d}`;
   return `https://wa.me/${d}?text=${encodeURIComponent(message)}`;
 }
+
+/** "IMEI 3512…" ou "Sem IMEI" (aparelho cadastrado sem IMEI, que pode receber depois). */
+export function imeiText(imei: string | null | undefined): string {
+  return imei ? `IMEI ${imei}` : "Sem IMEI";
+}

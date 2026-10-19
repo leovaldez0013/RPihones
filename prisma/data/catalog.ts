@@ -1,5 +1,5 @@
 // Catálogo de iPhones (nomes de cores como a Apple Brasil divulga). Editável em Configurações → Catálogo.
-export type CatalogModel = { name: string; family: string; year: number; colors: string[]; capacities: string[] };
+export type CatalogModel = { name: string; family: string; year: number; colors: string[]; capacities: string[]; esimOnly?: boolean };
 
 const c11 = ["Preto", "Branco", "Verde", "Amarelo", "Roxo", "(PRODUCT)RED"];
 const c11Pro = ["Cinza-espacial", "Prateado", "Dourado", "Verde-meia-noite"];
@@ -19,6 +19,7 @@ const c17Pro = ["Laranja-cósmico", "Azul-intenso", "Prateado"];
 // nomes oficiais da Apple Brasil (apple.com/br/iphone-18-pro/specs)
 const c18Pro = ["Preto", "Prateado", "Glacial", "Bordô"];
 const cDuo = ["Branco-estrela", "Céu noturno"];
+const c17e = ["Preto", "Branco", "Rosa-pálido"];
 
 export const CATALOG: CatalogModel[] = [
   { name: "iPhone 11", family: "iPhone 11", year: 2019, colors: c11, capacities: ["64GB", "128GB", "256GB"] },
@@ -46,10 +47,11 @@ export const CATALOG: CatalogModel[] = [
   { name: "iPhone 16 Pro Max", family: "iPhone 16", year: 2024, colors: c16Pro, capacities: ["256GB", "512GB", "1TB"] },
   { name: "iPhone 16e", family: "iPhone 16", year: 2025, colors: ["Preto", "Branco"], capacities: ["128GB", "256GB", "512GB"] },
   { name: "iPhone 17", family: "iPhone 17", year: 2025, colors: c17, capacities: ["256GB", "512GB"] },
-  { name: "iPhone Air", family: "iPhone 17", year: 2025, colors: cAir, capacities: ["256GB", "512GB", "1TB"] },
+  { name: "iPhone Air", family: "iPhone 17", year: 2025, colors: cAir, capacities: ["256GB", "512GB", "1TB"], esimOnly: true },
   { name: "iPhone 17 Pro", family: "iPhone 17", year: 2025, colors: c17Pro, capacities: ["256GB", "512GB", "1TB"] },
   { name: "iPhone 17 Pro Max", family: "iPhone 17", year: 2025, colors: c17Pro, capacities: ["256GB", "512GB", "1TB", "2TB"] },
+  { name: "iPhone 17e", family: "iPhone 17", year: 2026, colors: c17e, capacities: ["256GB", "512GB"] },
   { name: "iPhone 18 Pro", family: "iPhone 18", year: 2026, colors: c18Pro, capacities: ["256GB", "512GB", "1TB", "2TB"] },
   { name: "iPhone 18 Pro Max", family: "iPhone 18", year: 2026, colors: c18Pro, capacities: ["256GB", "512GB", "1TB", "2TB"] },
-  { name: "iPhone Duo", family: "iPhone 18", year: 2026, colors: cDuo, capacities: ["256GB", "512GB", "1TB", "2TB"] },
+  { name: "iPhone Duo", family: "iPhone 18", year: 2026, colors: cDuo, capacities: ["256GB", "512GB", "1TB", "2TB"], esimOnly: true },
 ];

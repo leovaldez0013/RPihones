@@ -18,6 +18,7 @@ import { closeTasksFor, ensureTask } from "@/features/tasks/service";
 import { generateSaleDocuments } from "@/features/documents/hooks";
 import { getCardRules, getCommissionRates, getWarrantyDays } from "./config";
 import type { SaleData } from "./schemas";
+import { imeiText } from "@/lib/format";
 
 type Actor = { id: string; role: string };
 
@@ -59,28 +60,28 @@ async function buildLines(tx: Tx, data: SaleData, saleId: string | undefined, co
           (data.orderId && d.reservedForOrderId === data.orderId) ||
           (!d.reservedForSaleId && data.customerId && d.reservedCustomerId === data.customerId));
       if (d.status === "RESERVADO" && !reservedForMe) {
-        throw new BusinessError(`${label} (IMEI ${d.imei}) está reservado para outro cliente. Libere a reserva antes de vender.`);
+        throw new BusinessError(`${label} (${imeiText(d.imei)}) está reservado para outro cliente. Libere a reserva antes de vender.`);
       }
       if (d.status !== "DISPONIVEL" && d.status !== "RESERVADO") {
-        throw new BusinessError(`${label} (IMEI ${d.imei}) não está disponível: ${DEVICE_STATUS.label(d.status)}.`);
+        throw new BusinessError(`${label} (${imeiText(d.imei)}) não está disponível: ${DEVICE_STATUS.label(d.status)}.`);
       }
       const otherActive = await tx.saleItem.findFirst({
         where: { deviceId: d.id, active: true, sale: { status: { in: ["CONCLUIDA", "ORCAMENTO"] }, id: saleId ? { not: saleId } : undefined } },
         include: { sale: true },
       });
       if (otherActive && (otherActive.sale.status === "CONCLUIDA" || completing)) {
-        throw new BusinessError(`O IMEI ${d.imei} já está na venda #${otherActive.sale.number}.`);
+        throw new BusinessError(`${label} (${imeiText(d.imei)}) já está na venda #${otherActive.sale.number}.`);
       }
       const lastCheck = await tx.imeiCheck.findFirst({ where: { deviceId: d.id }, orderBy: { createdAt: "desc" } });
       if (lastCheck?.blacklisted) {
-        throw new BusinessError(`${label} (IMEI ${d.imei}) consta como BLOQUEADO no último teste de IMEI. Venda impedida.`, "IMEI_BLOCKED");
+        throw new BusinessError(`${label} (${imeiText(d.imei)}) consta como BLOQUEADO no último teste de IMEI. Venda impedida.`, "IMEI_BLOCKED");
       }
       if (it.discount > d.salePrice) throw new BusinessError(`Desconto maior que o preço de ${label}.`);
       lines.push({
         kind: "DEVICE",
         deviceId: d.id,
         accessoryId: null,
-        description: `${label} — IMEI ${d.imei}`,
+        description: `${label} — ${imeiText(d.imei)}`,
         quantity: 1,
         unitPrice: d.salePrice,
         discount: it.discount,

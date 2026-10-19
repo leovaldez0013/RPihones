@@ -33,8 +33,16 @@ export type ImeiValidation = {
   message: string;
 };
 
+/** Remove espaços, traços e pontos colados ao IMEI; letras e outros símbolos continuam (e reprovam). */
+export function normalizeImei(input: string | null | undefined): string {
+  return (input ?? "").replace(/[\s.-]/g, "");
+}
+
 export function validateImei(input: string): ImeiValidation {
-  const imei = onlyDigits(input);
+  const imei = normalizeImei(input);
+  if (!/^\d*$/.test(imei)) {
+    return { imei, formatOk: false, luhnOk: false, tac: null, message: "Use só números no IMEI." };
+  }
   if (imei.length !== 15) {
     return {
       imei,
@@ -53,7 +61,7 @@ export function validateImei(input: string): ImeiValidation {
     formatOk: true,
     luhnOk,
     tac: imei.slice(0, 8),
-    message: luhnOk ? "IMEI válido (dígito verificador confere)." : "Dígito verificador não confere — confira o número digitado.",
+    message: luhnOk ? "IMEI válido (dígito verificador confere)." : "IMEI inválido, confira a digitação",
   };
 }
 

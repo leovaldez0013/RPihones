@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { DEVICE_CONDITION, GRADES, TRADE_IN_CHECKLIST } from "@/domain/constants";
 import { optionalString, zCents, zDate, zOptionalInt } from "@/lib/validators";
-import { zImei } from "@/features/devices/schemas";
+import { zImei, zImeiOptional } from "@/features/devices/schemas";
 
 export const purchaseItemSchema = z
   .object({
@@ -43,7 +43,7 @@ export const receiveSchema = z.object({
       devices: z
         .array(
           z.object({
-            imei: zImei,
+            imei: zImeiOptional(),
             imei2: optionalString,
             serial: optionalString,
             color: optionalString,

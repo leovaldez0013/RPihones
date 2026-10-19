@@ -15,6 +15,7 @@ import {
   Banknote,
   BarChart3,
   Settings,
+  FlaskConical,
   type LucideIcon,
 } from "lucide-react";
 import type { Permission } from "@/lib/permissions";
@@ -25,7 +26,10 @@ export type NavGroup = { label: string; items: NavItem[] };
 export const NAV: NavGroup[] = [
   {
     label: "Geral",
-    items: [{ title: "Dashboard", href: "/dashboard", icon: LayoutDashboard, permission: "dashboard.view" }],
+    items: [
+      { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard, permission: "dashboard.view" },
+      { title: "Simulação", href: "/simulacao", icon: FlaskConical, permission: "simulation.manage" },
+    ],
   },
   {
     label: "Vendas",

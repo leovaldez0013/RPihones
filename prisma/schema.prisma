@@ -187,6 +187,7 @@ model DeviceModel {
   capacities    String // JSON string[] ["128GB","256GB"]
   sortOrder     Int            @default(0)
   active        Boolean        @default(true)
+  esimOnly      Boolean        @default(false) // só eSIM (sem chip físico) no Brasil
   devices       Device[]
   tacs          TacEntry[]
   tradeInPrices TradeInPrice[]
@@ -203,7 +204,7 @@ model TacEntry {
 
 model Device {
   id                 String      @id @default(cuid())
-  imei               String      @unique
+  imei               String?     @unique // opcional: aparelho pode entrar sem IMEI e receber depois
   imei2              String?
   serial             String?
   modelId            String

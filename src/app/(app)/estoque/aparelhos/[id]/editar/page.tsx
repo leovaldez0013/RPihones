@@ -6,6 +6,7 @@ import { db, parseJson } from "@/lib/db";
 import { getCatalog, getSuppliersLite } from "@/features/devices/queries";
 import type { DeviceInput } from "@/features/devices/schemas";
 import { DeviceForm } from "../../device-form";
+import { imeiText } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Editar aparelho" };
 
@@ -23,7 +24,7 @@ export default async function EditDevicePage({ params }: { params: Promise<{ id:
 
   const defaults: DeviceInput = {
     id: d.id,
-    imei: d.imei,
+    imei: d.imei ?? "",
     imei2: d.imei2 ?? "",
     serial: d.serial ?? "",
     modelId: d.modelId,
@@ -44,7 +45,7 @@ export default async function EditDevicePage({ params }: { params: Promise<{ id:
 
   return (
     <div className="mx-auto max-w-6xl">
-      <PageHeader title={`Editar ${d.model.name}`} description={`IMEI ${d.imei}`} back={`/estoque/aparelhos/${d.id}`} />
+      <PageHeader title={`Editar ${d.model.name}`} description={imeiText(d.imei)} back={`/estoque/aparelhos/${d.id}`} />
       <DeviceForm catalog={catalog} suppliers={suppliers} defaults={defaults} />
     </div>
   );

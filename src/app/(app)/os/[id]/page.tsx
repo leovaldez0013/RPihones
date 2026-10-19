@@ -11,7 +11,7 @@ import { db, parseJson } from "@/lib/db";
 import { DEVICE_STATUS, ENTRY_STATUS, SO_KIND, SO_STATUS, TRADE_IN_CHECKLIST } from "@/domain/constants";
 import { SO_BOARD, SO_CLOSED, soTotals } from "@/domain/service-order";
 import { formatBRL } from "@/domain/money";
-import { formatCPF, formatDateTime, formatPhone } from "@/lib/format";
+import { formatCPF, formatDateTime, formatPhone, imeiText } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { SoActions } from "./so-actions";
 import { SoEditForm } from "./so-edit-form";
@@ -113,7 +113,7 @@ export default async function ServiceOrderPage({ params }: { params: Promise<{ i
               {o.device ? (
                 <Link href={`/estoque/aparelhos/${o.device.id}`} className="hover:underline">
                   <p className="font-medium">{title}</p>
-                  <p className="font-mono text-xs text-muted-foreground">IMEI {o.device.imei}</p>
+                  <p className="font-mono text-xs text-muted-foreground">{imeiText(o.device.imei)}</p>
                   <StatusBadge value={o.device.status} options={DEVICE_STATUS} className="mt-1.5" />
                 </Link>
               ) : (

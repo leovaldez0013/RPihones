@@ -12,7 +12,7 @@ import { db } from "@/lib/db";
 import { formatBRL } from "@/domain/money";
 import { ORDER_STATUS, SALE_STATUS, SO_STATUS, TASK_TYPE } from "@/domain/constants";
 import { templateDef } from "@/domain/marketing";
-import { formatCEP, formatCPF, formatDate, formatPhone, whatsappLink } from "@/lib/format";
+import { formatCEP, formatCPF, formatDate, formatPhone, whatsappLink, imeiText } from "@/lib/format";
 import { CustomerActions } from "./customer-actions";
 
 export const metadata: Metadata = { title: "Cliente" };
@@ -180,7 +180,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
                     <Link key={item.id} href={`/estoque/aparelhos/${item.deviceId}`} className="flex items-center justify-between gap-3 py-2.5 text-sm hover:underline">
                       <span>
                         <span className="font-medium">{item.device!.model.name} {item.device!.capacity}</span>{" "}
-                        <span className="text-muted-foreground">{item.device!.color} · IMEI {item.device!.imei}</span>
+                        <span className="text-muted-foreground">{item.device!.color} · {imeiText(item.device!.imei)}</span>
                       </span>
                       <span className="whitespace-nowrap text-muted-foreground">
                         {formatDate(sale.completedAt)} · garantia {item.warrantyDays} dias

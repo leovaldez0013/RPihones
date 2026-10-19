@@ -31,7 +31,8 @@ export default async function LabelsPage({
       key: d.id,
       title: `${d.model.name} ${d.capacity}`,
       subtitle: `${d.color} · ${DEVICE_CONDITION.label(d.condition)}${d.batteryHealth ? ` · Bat. ${d.batteryHealth}%` : ""}`,
-      code: d.imei,
+      // sem IMEI: nº de série ou código interno (o PDV encontra o aparelho por ambos)
+      code: d.imei ?? d.serial ?? d.id,
       price: d.salePrice,
       qr: true,
     })),

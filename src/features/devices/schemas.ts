@@ -1,31 +1,34 @@
 import { z } from "zod";
 import { DEVICE_CONDITION, DEVICE_STATUS, GRADES } from "@/domain/constants";
-import { validateImei } from "@/domain/imei";
+import { normalizeImei, validateImei } from "@/domain/imei";
 import { optionalString, zCents, zDate, zOptionalInt } from "@/lib/validators";
 
+/** IMEI obrigatório (troca e compra de pessoa física: comprova a procedência). */
 export const zImei = z
   .string()
-  .transform((v) => v.replace(/\D/g, ""))
+  .transform(normalizeImei)
   .superRefine((v, ctx) => {
     const r = validateImei(v);
     if (!r.formatOk || !r.luhnOk) ctx.addIssue({ code: "custom", message: r.message });
   });
 
-const zImeiOptional = z
-  .string()
-  .optional()
-  .nullable()
-  .transform((v) => (v ? v.replace(/\D/g, "") : null))
-  .superRefine((v, ctx) => {
-    if (!v) return;
-    const r = validateImei(v);
-    if (!r.formatOk || !r.luhnOk) ctx.addIssue({ code: "custom", message: `IMEI 2: ${r.message}` });
-  });
+/** IMEI opcional: vazio vira null; preenchido precisa ser válido. */
+export const zImeiOptional = (label = "IMEI") =>
+  z
+    .string()
+    .optional()
+    .nullable()
+    .transform((v) => normalizeImei(v) || null)
+    .superRefine((v, ctx) => {
+      if (!v) return;
+      const r = validateImei(v);
+      if (!r.formatOk || !r.luhnOk) ctx.addIssue({ code: "custom", message: label === "IMEI" ? r.message : `${label}: ${r.message}` });
+    });
 
 export const deviceSchema = z.object({
   id: z.string().optional(),
-  imei: zImei,
-  imei2: zImeiOptional,
+  imei: zImeiOptional(),
+  imei2: zImeiOptional("IMEI 2"),
   serial: optionalString,
   modelId: z.string().min(1, "Selecione o modelo"),
   capacity: z.string().min(1, "Selecione a capacidade"),
@@ -45,6 +48,8 @@ export const deviceSchema = z.object({
   entryDate: zDate,
   appleWarrantyUntil: zDate,
   status: z.enum(DEVICE_STATUS.values).default("DISPONIVEL"),
+  /** confirma salvar com modelo diferente do que o TAC costuma indicar */
+  confirmTacMismatch: z.boolean().optional(),
 });
 export type DeviceInput = z.input<typeof deviceSchema>;
 export type DeviceData = z.output<typeof deviceSchema>;

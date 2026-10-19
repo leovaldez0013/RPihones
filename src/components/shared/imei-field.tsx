@@ -94,11 +94,16 @@ export function ImeiField({
             {result.luhnOk ? <CheckCircle2 className="size-3.5" /> : <AlertCircle className="size-3.5" />}
             {result.message}
           </p>
-          {result.tacModel && (
-            <p className="flex items-center gap-1 text-muted-foreground">
-              <Info className="size-3.5" /> TAC reconhecido: <strong>{result.tacModel.name}</strong>
-            </p>
-          )}
+          {result.luhnOk &&
+            (result.tacModel ? (
+              <p className="flex items-center gap-1 text-muted-foreground">
+                <Info className="size-3.5" /> Modelo identificado: <strong>{result.tacModel.name}</strong>
+              </p>
+            ) : (
+              <p className="flex items-center gap-1 text-muted-foreground">
+                <Info className="size-3.5" /> Modelo não reconhecido, selecione manualmente
+              </p>
+            ))}
           {duplicate && (
             <p className={existingIsInfo ? "flex items-center gap-1 text-muted-foreground" : "flex items-center gap-1 font-medium text-destructive"}>
               {existingIsInfo ? <Info className="size-3.5" /> : <AlertCircle className="size-3.5" />} {existingIsInfo ? "No sistema:" : "Já cadastrado:"} {duplicate.name} ({DEVICE_STATUS.label(duplicate.status)}

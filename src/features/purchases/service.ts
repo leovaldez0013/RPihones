@@ -103,8 +103,10 @@ export async function receivePurchase(tx: Tx, data: ReceiveData, userId: string)
 
     if (item.kind === "DEVICE") {
       for (const d of r.devices) {
-        if (seen.has(d.imei)) throw new BusinessError(`IMEI repetido no recebimento: ${d.imei}`);
-        seen.add(d.imei);
+        if (d.imei) {
+          if (seen.has(d.imei)) throw new BusinessError(`IMEI repetido no recebimento: ${d.imei}`);
+          seen.add(d.imei);
+        }
         const device = await createDevice(
           tx,
           {

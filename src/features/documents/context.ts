@@ -7,7 +7,7 @@ import { mdList, mdTable } from "@/domain/template";
 import { simulateInstallments } from "@/domain/installments";
 import { warrantyUntil } from "@/domain/sale";
 import { DEVICE_CONDITION, ORDER_STATUS, PAYMENT_METHOD, SO_PRIORITY, TRADE_IN_CHECKLIST } from "@/domain/constants";
-import { formatCEP, formatCPF, formatDate, formatDocument, formatLongDate, formatPhone } from "@/lib/format";
+import { formatCEP, formatCPF, formatDate, formatDocument, formatLongDate, formatPhone, imeiText } from "@/lib/format";
 import { getCardRules, getWarrantyDays } from "@/features/sales/config";
 
 export type DocCtx = Record<string, unknown>;
@@ -83,7 +83,7 @@ export async function saleContext(tx: Tx, saleId: string): Promise<{ ctx: DocCtx
   const items = s.items.filter((i) => i.active || s.status !== "CONCLUIDA");
   const itensTable = mdTable(
     ["Qtd", "Descrição", "Valor"],
-    items.map((i) => [i.quantity, i.device ? `${i.device.model.name} ${i.device.capacity} ${i.device.color} — IMEI ${i.device.imei}` : i.description, formatBRL(i.unitPrice * i.quantity - i.discount)]),
+    items.map((i) => [i.quantity, i.device ? `${i.device.model.name} ${i.device.capacity} ${i.device.color} — ${imeiText(i.device.imei)}` : i.description, formatBRL(i.unitPrice * i.quantity - i.discount)]),
   );
   const pagamentos = mdList(
     s.payments.map((p) => {
@@ -186,7 +186,7 @@ export async function usedPurchaseContext(tx: Tx, id: string): Promise<{ ctx: Do
         finalidade: `em **venda** (compra pela loja nº ${p.number}), recebendo o pagamento via ${p.paymentMethod === "DINHEIRO" ? "dinheiro" : p.paymentMethod === "PIX" ? "PIX" : "transferência"}`,
         valor: formatBRL(p.value),
         valor_extenso: reaisPorExtenso(p.value),
-        aparelho: mdTable(["Modelo", "Capacidade", "Cor", "IMEI", "Nº de série"], [[d.model.name, d.capacity, d.color, d.imei, d.serial ?? "—"]]),
+        aparelho: mdTable(["Modelo", "Capacidade", "Cor", "IMEI", "Nº de série"], [[d.model.name, d.capacity, d.color, d.imei ?? "—", d.serial ?? "—"]]),
         bateria: d.batteryHealth != null ? `${d.batteryHealth}%` : "não informada",
         grade: d.grade ?? "—",
         checklist: checklistText(p.checklist),
@@ -227,7 +227,7 @@ export async function serviceOrderContext(tx: Tx, soId: string): Promise<{ ctx: 
     include: { customer: true, device: { include: { model: true } }, parts: { include: { accessory: true } } },
   });
   const warranty = await getWarrantyDays(tx);
-  const aparelho = o.device ? `${o.device.model.name} ${o.device.capacity} ${o.device.color} — IMEI ${o.device.imei}` : `${o.deviceDescription ?? ""}${o.imei ? ` — IMEI ${o.imei}` : ""}`;
+  const aparelho = o.device ? `${o.device.model.name} ${o.device.capacity} ${o.device.color} — ${imeiText(o.device.imei)}` : `${o.deviceDescription ?? ""}${o.imei ? ` — IMEI ${o.imei}` : ""}`;
   const delivered = o.deliveredAt ?? new Date();
   const days = warranty.SERVICO?.days ?? 90;
   return {

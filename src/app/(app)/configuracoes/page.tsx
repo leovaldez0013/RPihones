@@ -13,6 +13,7 @@ import {
   CreditCard,
   ChevronRight,
   DatabaseBackup,
+  FlaskConical,
   MessageSquareText,
   type LucideIcon,
 } from "lucide-react";
@@ -35,6 +36,7 @@ const SETTINGS_SECTIONS: Section[] = [
   { href: "/configuracoes/comissoes", title: "Comissões", description: "% por vendedor e categoria (novo, seminovo, acessório, serviço)", icon: Percent, permission: "settings.operational" },
   { href: "/configuracoes/garantias", title: "Prazos de garantia", description: "Dias de garantia por condição e cláusulas de exclusão", icon: ShieldCheck, permission: "settings.operational" },
   { href: "/marketing/modelos", title: "Mensagens de WhatsApp", description: "Pós-venda, aniversário, garantia e campanhas", icon: MessageSquareText, permission: "settings.operational" },
+  { href: "/simulacao", title: "Simulação de 1 mês", description: "Testar o sistema com dados fictícios, separados dos reais", icon: FlaskConical, permission: "simulation.manage" },
   { href: "/api/backup", title: "Backup dos dados", description: "Baixar todas as informações do sistema (JSON)", icon: DatabaseBackup, permission: "backup.export" },
   { href: "/configuracoes/auditoria", title: "Log de auditoria", description: "Quem fez o quê e quando", icon: History, permission: "audit.view" },
 ];

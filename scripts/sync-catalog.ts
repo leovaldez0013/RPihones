@@ -5,10 +5,14 @@ import { CATALOG } from "../prisma/data/catalog";
 import { seedTradeInPrices } from "../prisma/seed/sales";
 
 async function main() {
-  const existing = new Set((await db.deviceModel.findMany({ select: { name: true } })).map((m) => m.name));
+  const existing = new Map((await db.deviceModel.findMany({ select: { name: true, esimOnly: true } })).map((m) => [m.name, m]));
   const added: string[] = [];
   for (const [i, m] of CATALOG.entries()) {
-    if (existing.has(m.name)) continue;
+    const found = existing.get(m.name);
+    if (found) {
+      if (!!m.esimOnly !== found.esimOnly) await db.deviceModel.update({ where: { name: m.name }, data: { esimOnly: !!m.esimOnly } });
+      continue;
+    }
     await db.deviceModel.create({ data: { ...m, colors: JSON.stringify(m.colors), capacities: JSON.stringify(m.capacities), sortOrder: i } });
     added.push(m.name);
   }

@@ -47,3 +47,7 @@ next-env.d.ts
 /public/uploads/*
 !/public/uploads/.gitkeep
 /.next-build/
+/prisma/backups/
+/prisma/simulacao.db*
+/prisma/simulacao.json
+/prisma/.simulacao-ativa

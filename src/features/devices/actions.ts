@@ -11,7 +11,7 @@ import { addDeviceEvent, createDevice, updateDevice } from "./service";
 
 export const saveDevice = action({ schema: deviceSchema, permission: "devices.edit" }, async (data, { user }) => {
   const device = await db.$transaction(async (tx) =>
-    data.id ? updateDevice(tx, data.id, data, user.id) : createDevice(tx, data, { userId: user.id, origin: "AJUSTE" }),
+    data.id ? updateDevice(tx, data.id, data, user.id) : createDevice(tx, data, { userId: user.id, origin: "AJUSTE", checkTac: true }),
   );
   revalidatePath("/estoque/aparelhos");
   return { id: device.id };

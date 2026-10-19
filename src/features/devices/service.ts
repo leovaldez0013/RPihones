@@ -5,6 +5,7 @@ import { BusinessError } from "@/lib/errors";
 import { formatBRL } from "@/domain/money";
 import { DEVICE_STATUS } from "@/domain/constants";
 import type { DeviceData } from "./schemas";
+import { imeiText } from "@/lib/format";
 
 export async function addDeviceEvent(
   tx: Tx,
@@ -22,9 +23,10 @@ export async function addDeviceEvent(
   });
 }
 
-/** Garante que o IMEI (e IMEI 2) não exista em nenhum aparelho do estoque. */
-export async function assertImeiAvailable(tx: Tx, imei: string, imei2?: string | null, ignoreId?: string) {
+/** Garante que o IMEI (e IMEI 2) não exista em nenhum aparelho do estoque. Sem IMEI não há o que checar. */
+export async function assertImeiAvailable(tx: Tx, imei: string | null | undefined, imei2?: string | null, ignoreId?: string) {
   const values = [imei, imei2].filter(Boolean) as string[];
+  if (!values.length) return;
   const existing = await tx.device.findFirst({
     where: {
       id: ignoreId ? { not: ignoreId } : undefined,
@@ -39,8 +41,21 @@ export async function assertImeiAvailable(tx: Tx, imei: string, imei2?: string |
   }
 }
 
-/** Aprende o TAC (8 primeiros dígitos) → modelo a partir dos aparelhos cadastrados. */
-export async function learnTac(tx: Tx, imei: string, modelId: string) {
+/**
+ * Divergência TAC × modelo: se os 8 primeiros dígitos já estão ligados a outro modelo, pede confirmação
+ * (o formulário reenvia com confirmTacMismatch). Não bloqueia de vez: a tabela pode estar errada.
+ */
+export async function assertTacMatches(tx: Tx, imei: string | null | undefined, modelId: string, confirmed?: boolean) {
+  if (!imei || confirmed) return;
+  const known = await tx.tacEntry.findUnique({ where: { tac: imei.slice(0, 8) }, include: { model: true } });
+  if (known && known.modelId !== modelId) {
+    throw new BusinessError(`Este IMEI costuma ser do ${known.model.name}. Confirma?`, "TAC_MISMATCH");
+  }
+}
+
+/** Aprende o TAC (8 primeiros dígitos) → modelo a partir dos aparelhos cadastrados (não sobrescreve o que já existe). */
+export async function learnTac(tx: Tx, imei: string | null | undefined, modelId: string) {
+  if (!imei) return;
   const tac = imei.slice(0, 8);
   const exists = await tx.tacEntry.findUnique({ where: { tac } });
   if (!exists) await tx.tacEntry.create({ data: { tac, modelId, note: "Aprendido no cadastro" } });
@@ -57,12 +72,16 @@ export async function createDevice(
     refId?: string;
     purchaseItemId?: string;
     eventType?: string;
+    /** formulário de cadastro: avisa se o modelo diverge do TAC conhecido */
+    checkTac?: boolean;
   },
 ) {
   await assertImeiAvailable(tx, data.imei, data.imei2);
+  if (ctx.checkTac) await assertTacMatches(tx, data.imei, data.modelId, data.confirmTacMismatch);
   const model = await tx.deviceModel.findUniqueOrThrow({ where: { id: data.modelId } });
-  const { id: _id, photos, entryDate, ...rest } = data;
+  const { id: _id, photos, entryDate, confirmTacMismatch: _c, ...rest } = data;
   void _id;
+  void _c;
   const device = await tx.device.create({
     data: {
       ...rest,
@@ -74,7 +93,7 @@ export async function createDevice(
   });
   await learnTac(tx, data.imei, data.modelId);
   // testes de IMEI feitos antes do cadastro (ex.: na avaliação da troca) passam a constar no aparelho
-  await tx.imeiCheck.updateMany({ where: { imei: data.imei, deviceId: null }, data: { deviceId: device.id } });
+  if (data.imei) await tx.imeiCheck.updateMany({ where: { imei: data.imei, deviceId: null }, data: { deviceId: device.id } });
   await addDeviceEvent(tx, {
     deviceId: device.id,
     type: ctx.eventType ?? "ENTRADA",
@@ -88,7 +107,7 @@ export async function createDevice(
     action: "device.create",
     entity: "Device",
     entityId: device.id,
-    summary: `Entrada de ${model.name} ${data.capacity} — IMEI ${data.imei}`,
+    summary: `Entrada de ${model.name} ${data.capacity} — ${imeiText(data.imei)}`,
   });
   return device;
 }
@@ -97,8 +116,12 @@ export async function updateDevice(tx: Tx, id: string, data: DeviceData, userId:
   const before = await tx.device.findUniqueOrThrow({ where: { id } });
   if (before.deletedAt) throw new BusinessError("Aparelho excluído.");
   if (before.imei !== data.imei || before.imei2 !== data.imei2) {
-    if (before.status === "VENDIDO") throw new BusinessError("Não é possível alterar o IMEI de um aparelho vendido.");
+    // aparelho vendido: só pode receber o IMEI que faltava, não trocar um já informado
+    if (before.status === "VENDIDO" && before.imei && before.imei !== data.imei) throw new BusinessError("Não é possível alterar o IMEI de um aparelho vendido.");
     await assertImeiAvailable(tx, data.imei, data.imei2, id);
+  }
+  if (data.imei && (data.imei !== before.imei || data.modelId !== before.modelId)) {
+    await assertTacMatches(tx, data.imei, data.modelId, data.confirmTacMismatch);
   }
   // status de venda/reserva/manutenção são controlados pelos fluxos (venda, encomenda, OS)
   const lockedStatus = ["VENDIDO", "RESERVADO", "EM_MANUTENCAO"];
@@ -108,12 +131,18 @@ export async function updateDevice(tx: Tx, id: string, data: DeviceData, userId:
     );
   }
 
-  const { id: _id, photos, entryDate, ...rest } = data;
+  const { id: _id, photos, entryDate, confirmTacMismatch: _c, ...rest } = data;
   void _id;
+  void _c;
   const device = await tx.device.update({
     where: { id },
     data: { ...rest, photos: JSON.stringify(photos ?? []), entryDate: entryDate ?? before.entryDate },
   });
+  if (data.imei && data.imei !== before.imei) {
+    await learnTac(tx, data.imei, data.modelId);
+    await tx.imeiCheck.updateMany({ where: { imei: data.imei, deviceId: null }, data: { deviceId: id } });
+    await addDeviceEvent(tx, { deviceId: id, type: "AJUSTE", description: before.imei ? `IMEI alterado: ${before.imei} → ${data.imei}` : `IMEI informado: ${data.imei}`, userId });
+  }
 
   if (before.salePrice !== data.salePrice) {
     await addDeviceEvent(tx, {

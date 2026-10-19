@@ -9,6 +9,7 @@ import { TRADE_IN_CHECKLIST } from "@/domain/constants";
 import { cancelSaleSchema, saleSchema } from "./schemas";
 import { cancelSale, saveSale } from "./service";
 import { getTradeInAdjustments } from "./config";
+import { imeiText } from "@/lib/format";
 
 export const saveSaleAction = action({ schema: saleSchema, permission: "sales.create" }, async (data, { user }) => {
   const sale = await db.$transaction((tx) => saveSale(tx, data, user), { timeout: 30000 });
@@ -55,7 +56,7 @@ export const searchSellables = action(
           ...(numeric
             ? { OR: [{ imei: { contains: digits } }, { imei2: { contains: digits } }] }
             : words.length === 1 && words[0].length >= 8
-              ? { serial: ci(words[0]) }
+              ? { OR: [{ serial: ci(words[0]) }, { id: words[0] }] } // etiqueta de aparelho sem IMEI traz o código interno
               : { AND: words.map((w) => ({ OR: [{ model: { name: ci(w) } }, { capacity: ci(w) }, ...(w.length >= 4 ? [{ color: ci(w) }] : [])] })) }),
         },
         include: { model: true },
@@ -80,10 +81,10 @@ export const searchSellables = action(
           type: "DEVICE",
           id: d.id,
           title: `${d.model.name} ${d.capacity}`,
-          subtitle: `${d.color} · ${d.batteryHealth != null ? `bateria ${d.batteryHealth}% · ` : ""}IMEI ${d.imei}`,
+          subtitle: `${d.color} · ${d.batteryHealth != null ? `bateria ${d.batteryHealth}% · ` : ""}${imeiText(d.imei)}`,
           price: d.salePrice,
           status: d.status,
-          imei: d.imei,
+          imei: d.imei ?? "",
           condition: d.condition,
           reservedForOther: d.status === "RESERVADO" && !mine,
           exact: numeric && (d.imei === digits || d.imei2 === digits),

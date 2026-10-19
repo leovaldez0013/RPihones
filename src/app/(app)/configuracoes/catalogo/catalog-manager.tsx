@@ -37,7 +37,29 @@ export function CatalogManager({ models, tacs }: { models: ModelRow[]; tacs: Tac
 
   const tacCols: ColumnDef<TacRow, unknown>[] = [
     { accessorKey: "tac", header: "TAC", cell: ({ row }) => <span className="font-mono">{row.original.tac}</span> },
-    { accessorKey: "model", header: "Modelo" },
+    {
+      accessorKey: "model",
+      header: "Modelo",
+      cell: ({ row }) => (
+        <NativeSelect
+          aria-label={`Modelo do TAC ${row.original.tac}`}
+          value={row.original.modelId}
+          className="h-8 w-56"
+          onChange={async (e) => {
+            const res = await saveTac({ tac: row.original.tac, modelId: e.target.value, note: "Corrigido manualmente" });
+            if (!res.ok) return toast.error(res.error);
+            toast.success(`TAC ${row.original.tac} agora indica ${models.find((x) => x.id === e.target.value)?.name ?? "o modelo escolhido"}`);
+            router.refresh();
+          }}
+        >
+          {models.map((x) => (
+            <option key={x.id} value={x.id}>
+              {x.name}
+            </option>
+          ))}
+        </NativeSelect>
+      ),
+    },
     { accessorKey: "note", header: "Origem", cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.note}</span> },
     {
       id: "rm",

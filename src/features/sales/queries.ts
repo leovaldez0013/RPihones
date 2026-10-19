@@ -4,6 +4,7 @@ import { can } from "@/lib/permissions";
 import type { SessionUser } from "@/lib/session";
 import { getCatalog } from "@/features/devices/queries";
 import { getCardRules } from "./config";
+import { imeiText } from "@/lib/format";
 
 /** Dados que o PDV precisa: taxas, catálogo (troca), vendedores, contas e o orçamento em edição. */
 export async function getPosData(user: SessionUser, opts: { quoteId?: string; customerId?: string; orderId?: string }) {
@@ -35,7 +36,7 @@ export async function getPosData(user: SessionUser, opts: { quoteId?: string; cu
           kind: i.kind as "DEVICE" | "ACCESSORY" | "SERVICE",
           refId: i.deviceId ?? i.accessoryId ?? i.id,
           title: i.device ? `${i.device.model.name} ${i.device.capacity}` : (i.accessory?.name ?? i.description),
-          subtitle: i.device ? `${i.device.color} · IMEI ${i.device.imei}` : i.accessory ? `SKU ${i.accessory.sku}` : "Serviço",
+          subtitle: i.device ? `${i.device.color} · ${imeiText(i.device.imei)}` : i.accessory ? `SKU ${i.accessory.sku}` : "Serviço",
           unitPrice: i.device?.salePrice ?? i.accessory?.price ?? i.unitPrice,
           quantity: i.quantity,
           discount: i.discount,
@@ -70,7 +71,7 @@ export async function getPosData(user: SessionUser, opts: { quoteId?: string; cu
         deposit: o.deposit,
         customer: { id: o.customer.id, name: o.customer.name, cpf: o.customer.cpf, phone: o.customer.phone },
         item: d
-          ? { kind: "DEVICE" as const, refId: d.id, title: `${d.model.name} ${d.capacity}`, subtitle: `${d.color} · IMEI ${d.imei}`, unitPrice: d.salePrice, quantity: 1, discount: 0 }
+          ? { kind: "DEVICE" as const, refId: d.id, title: `${d.model.name} ${d.capacity}`, subtitle: `${d.color} · ${imeiText(d.imei)}`, unitPrice: d.salePrice, quantity: 1, discount: 0 }
           : null,
       };
     }

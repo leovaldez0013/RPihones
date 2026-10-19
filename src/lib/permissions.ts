@@ -49,6 +49,7 @@ export const PERMISSIONS = {
   "settings.operational": ["ADMIN", "GERENTE"],
   "audit.view": ["ADMIN", "GERENTE"],
   "backup.export": ["ADMIN"],
+  "simulation.manage": ["ADMIN", "GERENTE"],
 } as const satisfies Record<string, readonly Role[]>;
 
 export type Permission = keyof typeof PERMISSIONS;

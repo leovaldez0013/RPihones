@@ -4,7 +4,7 @@ import { getUser } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { formatBRL } from "@/domain/money";
 import { DEVICE_STATUS, SALE_STATUS, SO_STATUS, ORDER_STATUS } from "@/domain/constants";
-import { formatCPF, formatPhone, formatDate } from "@/lib/format";
+import { formatCPF, formatPhone, formatDate, imeiText } from "@/lib/format";
 import type { SearchResult } from "@/components/layout/command-palette";
 
 export async function GET(req: Request) {
@@ -40,7 +40,7 @@ export async function GET(req: Request) {
               type: "device",
               id: d.id,
               title: `${d.model.name} ${d.capacity} ${d.color}`,
-              subtitle: `IMEI ${d.imei} · ${DEVICE_STATUS.label(d.status)} · ${formatBRL(d.salePrice)}`,
+              subtitle: `${imeiText(d.imei)} · ${DEVICE_STATUS.label(d.status)} · ${formatBRL(d.salePrice)}`,
               href: `/estoque/aparelhos/${d.id}`,
             });
         }),

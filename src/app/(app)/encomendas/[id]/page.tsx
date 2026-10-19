@@ -10,7 +10,7 @@ import { can } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { DEVICE_CONDITION, ENTRY_STATUS, ORDER_STATUS } from "@/domain/constants";
 import { formatBRL } from "@/domain/money";
-import { formatCPF, formatDate, formatDateTime, formatPhone } from "@/lib/format";
+import { formatCPF, formatDate, formatDateTime, formatPhone, imeiText } from "@/lib/format";
 import { compatibleDevices } from "@/features/orders/service";
 import { OrderActions } from "./order-actions";
 
@@ -125,7 +125,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                       {device.model.name} {device.capacity} {device.color}
                     </span>
                     <span className="block text-xs text-muted-foreground">
-                      IMEI {device.imei} · {DEVICE_CONDITION.label(device.condition)}
+                      {imeiText(device.imei)} · {DEVICE_CONDITION.label(device.condition)}
                       {device.batteryHealth != null && ` · bateria ${device.batteryHealth}%`}
                     </span>
                   </span>
@@ -152,7 +152,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                             {d.model.name} {d.capacity} {d.color}
                           </span>
                           <span className="block text-xs text-muted-foreground">
-                            {DEVICE_CONDITION.label(d.condition)} · {d.batteryHealth != null ? `bateria ${d.batteryHealth}% · ` : ""}IMEI {d.imei}
+                            {DEVICE_CONDITION.label(d.condition)} · {d.batteryHealth != null ? `bateria ${d.batteryHealth}% · ` : ""}{imeiText(d.imei)}
                           </span>
                         </Link>
                         <span className="flex items-center gap-3">
