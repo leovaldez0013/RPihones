@@ -4,13 +4,15 @@ import { requirePage } from "@/lib/session";
 import { db } from "@/lib/db";
 import { SO_CLOSED } from "@/domain/service-order";
 import { NewServiceOrderForm } from "./form";
+import { getCatalog } from "@/features/devices/queries";
 
 export const metadata: Metadata = { title: "Nova OS" };
 
 export default async function NewServiceOrderPage({ searchParams }: { searchParams: Promise<{ aparelho?: string; cliente?: string }> }) {
   const user = await requirePage("serviceOrders.edit");
   const { aparelho, cliente } = await searchParams;
-  const [technicians, devices, customer] = await Promise.all([
+  const [catalog, technicians, devices, customer] = await Promise.all([
+    getCatalog(),
     db.user.findMany({ where: { active: true, role: { in: ["TECNICO", "GERENTE", "ADMIN"] } }, orderBy: [{ role: "desc" }, { name: "asc" }], select: { id: true, name: true, role: true } }),
     db.device.findMany({
       where: { deletedAt: null, status: { in: ["DISPONIVEL", "EM_AVALIACAO", "DEVOLVIDO"] }, serviceOrders: { none: { status: { notIn: SO_CLOSED }, deletedAt: null } } },
@@ -30,6 +32,7 @@ export default async function NewServiceOrderPage({ searchParams }: { searchPara
     <div className="mx-auto max-w-5xl">
       <PageHeader title="Nova ordem de serviço" back="/os" />
       <NewServiceOrderForm
+        catalog={catalog.map((m) => ({ id: m.id, name: m.name, colors: m.colors }))}
         technicians={technicians}
         devices={options}
         defaultDeviceId={aparelho && options.some((o) => o.id === aparelho) ? aparelho : null}

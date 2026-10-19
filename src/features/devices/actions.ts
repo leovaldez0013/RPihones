@@ -3,11 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { action, BusinessError } from "@/lib/safe-action";
+import { action } from "@/lib/safe-action";
 import { audit } from "@/lib/audit";
 import { validateImei } from "@/domain/imei";
 import { deviceSchema, modelSchema, tacSchema } from "./schemas";
-import { addDeviceEvent, createDevice, updateDevice } from "./service";
+import { createDevice, softDeleteDevice, updateDevice } from "./service";
 
 export const saveDevice = action({ schema: deviceSchema, permission: "devices.edit" }, async (data, { user }) => {
   const device = await db.$transaction(async (tx) =>
@@ -20,15 +20,7 @@ export const saveDevice = action({ schema: deviceSchema, permission: "devices.ed
 export const deleteDevice = action(
   { schema: z.object({ id: z.string(), reason: z.string().min(3, "Informe o motivo") }), permission: "devices.edit" },
   async ({ id, reason }, { user }) => {
-    await db.$transaction(async (tx) => {
-      const d = await tx.device.findUniqueOrThrow({ where: { id } });
-      if (["VENDIDO", "RESERVADO", "EM_MANUTENCAO"].includes(d.status)) {
-        throw new BusinessError("Aparelho vendido, reservado ou em manutenção não pode ser excluído.");
-      }
-      await tx.device.update({ where: { id }, data: { deletedAt: new Date() } });
-      await addDeviceEvent(tx, { deviceId: id, type: "AJUSTE", description: `Excluído do estoque: ${reason}`, userId: user.id });
-      await audit(tx, { userId: user.id, action: "device.delete", entity: "Device", entityId: id, summary: `Aparelho ${d.imei} excluído: ${reason}` });
-    });
+    await db.$transaction((tx) => softDeleteDevice(tx, id, reason, user.id));
     revalidatePath("/estoque/aparelhos");
     return true;
   },

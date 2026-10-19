@@ -70,14 +70,38 @@ export async function getDashboard(user: SessionUser) {
   const yesterdaySales = inRange(yesterday, today);
   const monthSales = inRange(monthStart);
 
+  // serviços (OS de cliente entregues), sinais de encomenda e garantias vencendo
+  const svcFrom = new Date(Math.min(chartStart.getTime(), prevMonthStart.getTime()));
+  const [services, deposits, warrantiesExpiring] = await Promise.all([
+    db.serviceOrder.findMany({
+      where: { deletedAt: null, kind: "CLIENTE", status: "ENTREGUE", deliveredAt: { gte: svcFrom } },
+      select: { price: true, laborCost: true, deliveredAt: true, parts: { select: { quantity: true, unitCost: true } } },
+    }),
+    db.financialEntry.findMany({
+      where: { deletedAt: null, status: { not: "CANCELADA" }, originType: "ENCOMENDA", type: "RECEBER", createdAt: { gte: monthStart } },
+      select: { amount: true },
+    }),
+    db.warranty.count({ where: { status: "ATIVA", endDate: { gte: now, lte: new Date(now.getTime() + 7 * DAY) } } }),
+  ]);
+  const svcIn = (from: Date, to?: Date) => services.filter((o) => o.deliveredAt! >= from && (!to || o.deliveredAt! < to));
+  const svcProfit = (list: typeof services) => list.reduce((a, o) => a + o.price - o.laborCost - o.parts.reduce((p, x) => p + x.quantity * x.unitCost, 0), 0);
+  const monthServices = svcIn(monthStart);
+  const prevServices = svcIn(prevMonthStart, prevSameDay);
+
   // série diária (30 dias)
-  const days: { day: string; label: string; revenue: number; count: number }[] = [];
+  const days: { day: string; label: string; revenue: number; count: number; services: number }[] = [];
   for (let i = 0; i < 30; i++) {
     const start = new Date(chartStart.getTime() + i * DAY);
     const end = new Date(start.getTime() + DAY);
     const list = recent.filter((s) => s.completedAt! >= start && s.completedAt! < end);
     const zd = zoned(start)!;
-    days.push({ day: start.toISOString(), label: `${String(zd.getDate()).padStart(2, "0")}/${String(zd.getMonth() + 1).padStart(2, "0")}`, revenue: sumBy(list, (s) => s.total), count: list.length });
+    days.push({
+      day: start.toISOString(),
+      label: `${String(zd.getDate()).padStart(2, "0")}/${String(zd.getMonth() + 1).padStart(2, "0")}`,
+      revenue: sumBy(list, (s) => s.total),
+      count: list.length,
+      services: svcIn(start, end).reduce((a, o) => a + o.price, 0),
+    });
   }
 
   const byModel = new Map<string, { name: string; count: number; revenue: number }>();
@@ -144,8 +168,14 @@ export async function getDashboard(user: SessionUser) {
         prevCount: prevPeriod.length,
         ticket: ticket(monthSales),
         prevTicket: ticket(prevPeriod),
-        profit: financial ? sumBy(monthSales, profit) : null,
-        prevProfit: financial ? sumBy(prevPeriod, profit) : null,
+        // lucro = vendas (após custo, taxas e comissões) + serviços (valor − mão de obra − peças)
+        profit: financial ? sumBy(monthSales, profit) + svcProfit(monthServices) : null,
+        prevProfit: financial ? sumBy(prevPeriod, profit) + svcProfit(prevServices) : null,
+        servicesRevenue: monthServices.reduce((a, o) => a + o.price, 0),
+        prevServicesRevenue: prevServices.reduce((a, o) => a + o.price, 0),
+        servicesCount: monthServices.length,
+        deposits: deposits.reduce((a, e) => a + e.amount, 0),
+        depositsCount: deposits.length,
         commission: sumBy(monthSales, (s) => s.commission),
       },
     },
@@ -167,6 +197,7 @@ export async function getDashboard(user: SessionUser) {
       open: orders.length,
       arrived: orders.filter((o) => ["CHEGOU", "CLIENTE_AVISADO"].includes(o.status)).map((o) => ({ id: o.id, number: o.number, customer: o.customer.name, model: o.modelName, status: o.status })),
     },
+    warrantiesExpiring,
     serviceOrders: { byStatus: Object.fromEntries(soCounts.map((s) => [s.status, s._count])) as Record<string, number>, late: soLate },
     tasksToday,
     birthdays,

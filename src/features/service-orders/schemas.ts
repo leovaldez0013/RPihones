@@ -20,6 +20,8 @@ export const soCreateSchema = z
     kind: z.enum(SO_KIND.values),
     deviceId: optionalString,
     deviceDescription: optionalString,
+    modelId: optionalString,
+    color: optionalString,
     imei: optionalString,
     customerId: optionalString,
     ...editable,
@@ -27,7 +29,8 @@ export const soCreateSchema = z
   .superRefine((v, ctx) => {
     if (v.kind === "INTERNA" && !v.deviceId) ctx.addIssue({ code: "custom", path: ["deviceId"], message: "Selecione o aparelho do estoque" });
     if (v.kind === "CLIENTE" && !v.customerId) ctx.addIssue({ code: "custom", path: ["customerId"], message: "Selecione o cliente" });
-    if (v.kind === "CLIENTE" && !v.deviceId && !v.deviceDescription) ctx.addIssue({ code: "custom", path: ["deviceDescription"], message: "Informe o aparelho do cliente" });
+    if (v.kind === "CLIENTE" && !v.deviceId && !v.deviceDescription && !v.modelId) ctx.addIssue({ code: "custom", path: ["modelId"], message: "Informe o modelo do aparelho do cliente" });
+    if (v.kind === "GARANTIA") ctx.addIssue({ code: "custom", path: ["kind"], message: "OS de garantia é aberta pelo acionamento da garantia." });
   });
 export type SoCreateInput = z.input<typeof soCreateSchema>;
 

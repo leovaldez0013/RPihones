@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { action } from "@/lib/safe-action";
-import { cancelOrderSchema, orderSchema, orderStatusSchema, reserveSchema } from "./schemas";
-import { cancelOrder, releaseOrderDevice, reserveForOrder, saveOrder, setOrderStatus } from "./service";
+import { arrivalSchema, cancelOrderSchema, deliverOrderSchema, orderSchema, orderStatusSchema, reserveSchema } from "./schemas";
+import { cancelOrder, deliverOrder, registerArrival, releaseOrderDevice, reserveForOrder, saveOrder, setOrderStatus } from "./service";
 
 const refresh = (id?: string) => {
   revalidatePath("/encomendas");
@@ -41,4 +41,18 @@ export const cancelOrderAction = action({ schema: cancelOrderSchema, permission:
   await db.$transaction((tx) => cancelOrder(tx, input, user.id));
   refresh(input.id);
   return true;
+});
+
+export const registerArrivalAction = action({ schema: arrivalSchema, permission: "orders.edit" }, async (input, { user }) => {
+  const d = await db.$transaction((tx) => registerArrival(tx, input, user.id));
+  refresh(input.orderId);
+  revalidatePath("/estoque/aparelhos");
+  return { deviceId: d.id };
+});
+
+export const deliverOrderAction = action({ schema: deliverOrderSchema, permission: ["orders.edit", "sales.create"] }, async (input, { user }) => {
+  const sale = await db.$transaction((tx) => deliverOrder(tx, input, user), { timeout: 20000 });
+  refresh(input.orderId);
+  revalidatePath("/vendas");
+  return { saleId: sale.id, number: sale.number };
 });

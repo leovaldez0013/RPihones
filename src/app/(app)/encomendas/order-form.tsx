@@ -23,6 +23,7 @@ export type OrderDefaults = {
   condition: string;
   minPrice: number;
   maxPrice: number;
+  agreedPrice?: number;
   dueDate: string;
   notes: string;
 };
@@ -36,6 +37,7 @@ export function OrderForm({ catalog, defaults }: { catalog: CatalogItem[]; defau
   const [condition, setCondition] = useState(defaults?.condition ?? "");
   const [minPrice, setMinPrice] = useState(defaults?.minPrice ?? 0);
   const [maxPrice, setMaxPrice] = useState(defaults?.maxPrice ?? 0);
+  const [agreedPrice, setAgreedPrice] = useState(defaults?.agreedPrice ?? 0);
   const [deposit, setDeposit] = useState(0);
   const [depositMethod, setDepositMethod] = useState<"PIX" | "DINHEIRO" | "DEBITO" | "CREDITO">("PIX");
   const [dueDate, setDueDate] = useState(defaults?.dueDate ?? "");
@@ -56,6 +58,7 @@ export function OrderForm({ catalog, defaults }: { catalog: CatalogItem[]; defau
       condition: condition as "SEMINOVO",
       minPrice: minPrice || null,
       maxPrice: maxPrice || null,
+      agreedPrice: agreedPrice || null,
       deposit: isEdit ? 0 : deposit,
       depositMethod: !isEdit && deposit ? depositMethod : null,
       dueDate,
@@ -116,7 +119,7 @@ export function OrderForm({ catalog, defaults }: { catalog: CatalogItem[]; defau
                 ))}
               </NativeSelect>
             </FormField>
-            <FormField label="Previsão / prazo combinado">
+            <FormField label="Previsão de chegada">
               <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
             </FormField>
             <FormField label="Preço mínimo">
@@ -124,6 +127,9 @@ export function OrderForm({ catalog, defaults }: { catalog: CatalogItem[]; defau
             </FormField>
             <FormField label="Preço máximo" hint="Usado para avisar quando chegar aparelho compatível.">
               <MoneyInput value={maxPrice} onChange={setMaxPrice} />
+            </FormField>
+            <FormField label="Valor combinado com o cliente" hint="Preço final da venda na entrega (o sinal é abatido).">
+              <MoneyInput value={agreedPrice} onChange={setAgreedPrice} />
             </FormField>
             <FormField label="Observações" className="sm:col-span-2">
               <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />

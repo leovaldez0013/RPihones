@@ -188,3 +188,14 @@ export async function updateDevice(tx: Tx, id: string, data: DeviceData, userId:
 export function realCost(d: { acquisitionCost: number; serviceCost: number }) {
   return d.acquisitionCost + d.serviceCost;
 }
+
+/** Exclusão lógica (some do estoque, histórico preservado). Vendido, reservado ou em manutenção não pode. */
+export async function softDeleteDevice(tx: Tx, id: string, reason: string, userId: string) {
+  const d = await tx.device.findUniqueOrThrow({ where: { id } });
+  if (["VENDIDO", "RESERVADO", "EM_MANUTENCAO"].includes(d.status)) {
+    throw new BusinessError("Aparelho vendido, reservado ou em manutenção não pode ser excluído.");
+  }
+  await tx.device.update({ where: { id }, data: { deletedAt: new Date() } });
+  await addDeviceEvent(tx, { deviceId: id, type: "AJUSTE", description: `Excluído do estoque: ${reason}`, userId });
+  await audit(tx, { userId, action: "device.delete", entity: "Device", entityId: id, summary: `Aparelho ${imeiText(d.imei)} excluído: ${reason}` });
+}

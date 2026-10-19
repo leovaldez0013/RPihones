@@ -12,6 +12,7 @@ import { moveAccessory } from "@/features/accessories/service";
 import { createEntry, registerReceipt } from "@/features/finance/service";
 import { generateServiceOrderDoc } from "@/features/documents/service";
 import { onDeviceAvailable } from "@/features/orders/matching";
+import { completeClaimForServiceOrder, createServiceOrderWarranty } from "@/features/warranty/hooks";
 import type { soCreateSchema, soDeliverSchema, soPartSchema, soUpdateSchema } from "./schemas";
 
 /** Status do aparelho de estoque que permitem abrir OS interna. */
@@ -30,9 +31,17 @@ async function nextPosition(tx: Tx, status: string) {
   return (last?.position ?? -1) + 1;
 }
 
-export async function createServiceOrder(tx: Tx, data: z.output<typeof soCreateSchema>, userId: string) {
+/** Dados de criação; kind GARANTIA só vem do acionamento de garantia (não passa pelo formulário). */
+type SoCreateData = Omit<z.output<typeof soCreateSchema>, "kind"> & { kind: "INTERNA" | "CLIENTE" | "GARANTIA" };
+
+export async function createServiceOrder(tx: Tx, data: SoCreateData, userId: string) {
   let customerId = data.customerId;
   let imei = data.imei;
+  let deviceDescription = data.deviceDescription;
+  if (data.modelId && !deviceDescription) {
+    const m = await tx.deviceModel.findUnique({ where: { id: data.modelId } });
+    deviceDescription = [m?.name, data.color].filter(Boolean).join(" ") || null;
+  }
   if (data.deviceId) {
     const d = await tx.device.findUniqueOrThrow({ where: { id: data.deviceId } });
     if (d.deletedAt) throw new BusinessError("Aparelho excluído.");
@@ -54,7 +63,9 @@ export async function createServiceOrder(tx: Tx, data: z.output<typeof soCreateS
       number,
       kind: data.kind,
       deviceId: data.deviceId,
-      deviceDescription: data.deviceDescription,
+      deviceDescription,
+      modelId: data.modelId,
+      color: data.color,
       imei,
       customerId,
       technicianId: data.technicianId,
@@ -62,7 +73,7 @@ export async function createServiceOrder(tx: Tx, data: z.output<typeof soCreateS
       services: data.services,
       diagnosis: data.diagnosis,
       laborCost: data.laborCost,
-      price: data.kind === "INTERNA" ? 0 : data.price,
+      price: data.kind === "CLIENTE" ? data.price : 0,
       priority: data.priority,
       dueDate: data.dueDate,
       checklist: JSON.stringify(data.checklist),
@@ -74,8 +85,8 @@ export async function createServiceOrder(tx: Tx, data: z.output<typeof soCreateS
   if (data.deviceId) {
     await addDeviceEvent(tx, { deviceId: data.deviceId, type: "OS_ABERTA", description: `OS #${number} aberta: ${data.problem}`, userId, refType: "OS", refId: o.id });
   }
-  if (data.kind === "CLIENTE") await generateServiceOrderDoc(tx, o.id, "OS_ENTRADA", userId);
-  await audit(tx, { userId, action: "so.create", entity: "ServiceOrder", entityId: o.id, summary: `OS #${number} (${data.kind === "INTERNA" ? "interna" : "cliente"}): ${data.problem}` });
+  if (data.kind !== "INTERNA") await generateServiceOrderDoc(tx, o.id, "OS_ENTRADA", userId);
+  await audit(tx, { userId, action: "so.create", entity: "ServiceOrder", entityId: o.id, summary: `OS #${number} (${data.kind === "INTERNA" ? "interna" : data.kind === "GARANTIA" ? "garantia" : "cliente"}): ${data.problem}` });
   return o;
 }
 
@@ -89,7 +100,7 @@ export async function updateServiceOrder(tx: Tx, data: z.output<typeof soUpdateS
       services: data.services,
       diagnosis: data.diagnosis,
       laborCost: data.laborCost,
-      price: before.kind === "INTERNA" ? 0 : data.price,
+      price: before.kind === "CLIENTE" ? data.price : 0, // interna e garantia não cobram
       priority: data.priority,
       dueDate: data.dueDate,
       checklist: JSON.stringify(data.checklist),
@@ -171,12 +182,14 @@ export async function deliverServiceOrder(tx: Tx, input: z.output<typeof soDeliv
       await registerReceipt(tx, { description, amount: o.price, method, categoryKey: "SERVICO", customerId: o.customerId, originType: "OS", originId: o.id, userId });
     }
   }
-  if (o.kind === "CLIENTE" && o.deviceId) {
-    await addDeviceEvent(tx, { deviceId: o.deviceId, type: "OS_CONCLUIDA", description: `OS de cliente #${o.number} entregue`, userId, refType: "OS", refId: o.id });
+  if (o.kind !== "INTERNA" && o.deviceId) {
+    await addDeviceEvent(tx, { deviceId: o.deviceId, type: "OS_CONCLUIDA", description: `OS ${o.kind === "GARANTIA" ? "de garantia" : "de cliente"} #${o.number} entregue`, userId, refType: "OS", refId: o.id });
   }
 
   await tx.serviceOrder.update({ where: { id: o.id }, data: { status: "ENTREGUE", deliveredAt: now } });
-  if (o.kind === "CLIENTE") await generateServiceOrderDoc(tx, o.id, "OS_ENTREGA", userId);
+  if (o.kind !== "INTERNA") await generateServiceOrderDoc(tx, o.id, "OS_ENTREGA", userId);
+  if (o.kind === "CLIENTE") await createServiceOrderWarranty(tx, o.id);
+  if (o.kind === "GARANTIA") await completeClaimForServiceOrder(tx, o.id);
   if (o.kind === "INTERNA" && o.deviceId) await onDeviceAvailable(tx, o.deviceId);
   await audit(tx, {
     userId,
@@ -205,5 +218,6 @@ export async function cancelServiceOrder(tx: Tx, input: { id: string; reason: st
     data: { status: "CANCELADA", diagnosis: `${o.diagnosis ? `${o.diagnosis}\n` : ""}Cancelada: ${input.reason}` },
   });
   if (o.kind === "INTERNA" && o.deviceId) await onDeviceAvailable(tx, o.deviceId);
+  if (o.kind === "GARANTIA") await tx.warrantyClaim.updateMany({ where: { serviceOrderId: o.id }, data: { status: "EM_ANALISE", serviceOrderId: null } });
   await audit(tx, { userId, action: "so.cancel", entity: "ServiceOrder", entityId: o.id, summary: `OS #${o.number} cancelada: ${input.reason}` });
 }

@@ -9,7 +9,10 @@ import { ORDER_STATUS, PAYMENT_METHOD } from "@/domain/constants";
 import { addDeviceEvent } from "@/features/devices/service";
 import { createEntry, defaultAccountId, registerReceipt } from "@/features/finance/service";
 import { generateOrderDoc } from "@/features/documents/service";
-import type { orderSchema } from "./schemas";
+import type { arrivalSchema, deliverOrderSchema, orderSchema } from "./schemas";
+import { createDevice } from "@/features/devices/service";
+import { saveSale } from "@/features/sales/service";
+import { saleSchema } from "@/features/sales/schemas";
 import { imeiText } from "@/lib/format";
 
 type OrderData = z.output<typeof orderSchema>;
@@ -26,6 +29,7 @@ export async function saveOrder(tx: Tx, data: OrderData, userId: string) {
     condition: data.condition,
     minPrice: data.minPrice,
     maxPrice: data.maxPrice,
+    agreedPrice: data.agreedPrice,
     dueDate: data.dueDate,
     notes: data.notes,
   };
@@ -156,4 +160,62 @@ export async function cancelOrder(tx: Tx, input: { id: string; reason: string; r
   }
   await tx.order.update({ where: { id: o.id }, data: { status: "CANCELADA", notes: `${o.notes ? `${o.notes}\n` : ""}Cancelada: ${input.reason}${o.deposit ? (input.refund ? " (sinal devolvido)" : " (sinal retido)") : ""}` } });
   await audit(tx, { userId, action: "order.cancel", entity: "Order", entityId: o.id, summary: `Encomenda #${o.number} cancelada: ${input.reason}` });
+}
+
+/** Chegada do aparelho encomendado: entra no estoque já reservado para o cliente da encomenda. */
+export async function registerArrival(tx: Tx, input: z.output<typeof arrivalSchema>, userId: string) {
+  const o = await tx.order.findUniqueOrThrow({ where: { id: input.orderId } });
+  if (!["ABERTA", "EM_BUSCA"].includes(o.status) || o.deviceId) throw new BusinessError("Esta encomenda já tem aparelho ou foi finalizada.");
+  if (!o.modelId) throw new BusinessError("Encomenda sem modelo do catálogo.");
+  const device = await createDevice(
+    tx,
+    {
+      imei: input.imei,
+      imei2: null,
+      serial: null,
+      modelId: o.modelId,
+      capacity: input.capacity,
+      color: input.color,
+      condition: input.condition,
+      batteryHealth: input.batteryHealth ?? (input.condition === "NOVO" ? 100 : null),
+      grade: input.condition === "NOVO" ? "A+" : "A",
+      notes: `Chegou para a encomenda #${o.number}`,
+      photos: [],
+      supplierId: null,
+      acquisitionCost: input.acquisitionCost,
+      salePrice: input.salePrice,
+      entryDate: new Date(),
+      appleWarrantyUntil: null,
+      status: "DISPONIVEL",
+    },
+    { userId, origin: "COMPRA", refType: "ENCOMENDA", refId: o.id, eventDescription: `Entrada para a encomenda #${o.number}` },
+  );
+  await reserveForOrder(tx, o.id, device.id, userId);
+  return device;
+}
+
+/** Entrega: vira venda automaticamente (preço combinado, sinal abatido, restante na forma escolhida). */
+export async function deliverOrder(tx: Tx, input: z.output<typeof deliverOrderSchema>, actor: { id: string; role: string }) {
+  const o = await tx.order.findUniqueOrThrow({ where: { id: input.orderId } });
+  if (!o.deviceId || !["CHEGOU", "CLIENTE_AVISADO"].includes(o.status)) throw new BusinessError("Registre a chegada do aparelho antes de entregar.");
+  const d = await tx.device.findUniqueOrThrow({ where: { id: o.deviceId } });
+  const price = o.agreedPrice ?? d.salePrice;
+  const discount = Math.max(0, d.salePrice - price);
+  const total = d.salePrice - discount;
+  const rest = total - o.deposit;
+  if (rest < 0) throw new BusinessError("O sinal é maior que o valor combinado. Ajuste a encomenda.");
+  const payments = [
+    ...(o.deposit > 0 ? [{ method: "SINAL" as const, amount: o.deposit }] : []),
+    ...(rest > 0 ? [{ method: input.method, amount: rest, installments: input.method === "CREDITO_PARCELADO" ? Math.max(2, input.installments) : 1 }] : []),
+  ];
+  const data = saleSchema.parse({
+    action: "CONCLUIR",
+    customerId: o.customerId,
+    orderId: o.id,
+    items: [{ kind: "DEVICE", deviceId: d.id, discount }],
+    payments,
+    notes: `Entrega da encomenda #${o.number}`,
+  });
+  // desconto do valor combinado segue o limite do perfil (acima dele, a venda pede aprovação do gerente)
+  return saveSale(tx, data, actor);
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { deviceSearchText } from "@/features/devices/search";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -310,8 +311,8 @@ export function DevicesTable({
         columns={columns}
         data={filtered}
         initialSearch={initialSearch}
-        searchPlaceholder="IMEI, modelo, cor, série…"
-        searchText={(r) => `${r.imei ?? "sem imei"} ${r.imei2 ?? ""} ${r.serial ?? ""} ${r.model} ${r.capacity} ${r.color} ${r.supplier ?? ""}`}
+        searchPlaceholder="IMEI, modelo, cor, cliente, série…"
+        searchText={deviceSearchText}
         rowHref={(r) => `/estoque/aparelhos/${r.id}`}
         rowClassName={(r) => (active(r) && r.daysInStock > staleDays ? "bg-amber-50/50 dark:bg-amber-950/10" : undefined)}
         toolbar={

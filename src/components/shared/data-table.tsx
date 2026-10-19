@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { matchesSearch } from "@/lib/search";
 import { EmptyState } from "./empty-state";
 import { exportCSV, exportExcel } from "./export";
 
@@ -44,13 +45,6 @@ type Props<T> = {
   empty?: React.ReactNode;
   rowClassName?: (row: T) => string | undefined;
 };
-
-function normalize(s: string) {
-  return s
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase();
-}
 
 export function DataTable<T>({
   columns,
@@ -77,14 +71,7 @@ export function DataTable<T>({
     state: { sorting, globalFilter },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
-    globalFilterFn: (row, _col, value: string) => {
-      const q = normalize(String(value ?? "").trim());
-      if (!q) return true;
-      const text = searchText ? searchText(row.original) : JSON.stringify(row.original);
-      const hay = normalize(text);
-      const digits = q.replace(/\D/g, "");
-      return hay.includes(q) || (digits.length >= 3 && hay.replace(/\D/g, "").includes(digits));
-    },
+    globalFilterFn: (row, _col, value: string) => matchesSearch(searchText ? searchText(row.original) : JSON.stringify(row.original), String(value ?? "")),
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),

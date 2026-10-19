@@ -16,6 +16,7 @@ import { createEntry, defaultAccountId, reverseEntries } from "@/features/financ
 import { onDeviceAvailable } from "@/features/orders/matching";
 import { closeTasksFor, ensureTask } from "@/features/tasks/service";
 import { generateSaleDocuments } from "@/features/documents/hooks";
+import { cancelSaleWarranties, createSaleWarranties } from "@/features/warranty/hooks";
 import { getCardRules, getCommissionRates, getWarrantyDays } from "./config";
 import type { SaleData } from "./schemas";
 import { imeiText } from "@/lib/format";
@@ -471,6 +472,7 @@ async function completeSale(
     await audit(tx, { userId: actor.id, action: "order.deliver", entity: "Order", entityId: data.orderId, summary: `Encomenda entregue na venda #${saleNumber}` });
   }
 
+  await createSaleWarranties(tx, saleId);
   await generateSaleDocuments(tx, saleId, actor.id);
   await audit(tx, {
     userId: actor.id,
@@ -539,6 +541,7 @@ export async function cancelSale(tx: Tx, input: { id: string; type: "CANCELAMENT
     data: { status: input.type === "DEVOLUCAO" ? "DEVOLVIDA" : "CANCELADA", canceledAt: now, cancelReason: input.reason, commission: 0 },
   });
   await closeTasksFor(tx, "VENDA", sale.id);
+  await cancelSaleWarranties(tx, sale.id);
   await audit(tx, {
     userId: actor.id,
     action: input.type === "DEVOLUCAO" ? "sale.return" : "sale.cancel",

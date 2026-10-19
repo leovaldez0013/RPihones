@@ -16,6 +16,7 @@ import {
   BarChart3,
   Settings,
   FlaskConical,
+  ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
 import type { Permission } from "@/lib/permissions";
@@ -54,7 +55,10 @@ export const NAV: NavGroup[] = [
   },
   {
     label: "Serviços",
-    items: [{ title: "Ordens de serviço", href: "/os", icon: Wrench, permission: "serviceOrders.view" }],
+    items: [
+      { title: "Ordens de serviço", href: "/os", icon: Wrench, permission: "serviceOrders.view" },
+      { title: "Garantias", href: "/garantias", icon: ShieldCheck, permission: "warranty.view" },
+    ],
   },
   {
     label: "Gestão",

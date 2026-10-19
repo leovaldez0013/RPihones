@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Cake, Mail, MapPin, MessageCircle, Phone, ShoppingBag, Smartphone, Wrench, PackageSearch, Repeat } from "lucide-react";
+import { Cake, ShieldCheck, Mail, MapPin, MessageCircle, Phone, ShoppingBag, Smartphone, Wrench, PackageSearch, Repeat } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -10,7 +10,7 @@ import { requirePage } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { formatBRL } from "@/domain/money";
-import { ORDER_STATUS, SALE_STATUS, SO_STATUS, TASK_TYPE } from "@/domain/constants";
+import { ORDER_STATUS, SALE_STATUS, SO_STATUS, TASK_TYPE, WARRANTY_CLAIM_STATUS } from "@/domain/constants";
 import { templateDef } from "@/domain/marketing";
 import { formatCEP, formatCPF, formatDate, formatPhone, whatsappLink, imeiText } from "@/lib/format";
 import { CustomerActions } from "./customer-actions";
@@ -42,6 +42,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
       orders: { where: { deletedAt: null }, orderBy: { createdAt: "desc" } },
       tasks: { where: { doneAt: null }, orderBy: { dueDate: "asc" }, take: 5 },
       campaignSends: { orderBy: { createdAt: "desc" }, take: 5 },
+      warranties: { where: { status: "ATIVA" }, orderBy: { endDate: "desc" }, take: 10, include: { claims: { orderBy: { createdAt: "desc" } } } },
     },
   });
   if (!c || c.deletedAt) notFound();
@@ -135,6 +136,36 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
         </Card>
 
         <div className="flex flex-col gap-6 lg:col-span-2">
+          {c.warranties.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ShieldCheck className="size-4" /> Garantias
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col divide-y text-sm">
+                {c.warranties.map((w) => {
+                  const expired = w.endDate < new Date();
+                  const claim = w.claims[0];
+                  return (
+                    <Link key={w.id} href="/garantias" className="flex items-center justify-between gap-2 py-2 hover:underline">
+                      <span className="min-w-0">
+                        <span className="block truncate">{w.description}</span>
+                        {claim && (
+                          <span className="text-xs text-muted-foreground">
+                            Acionada: {claim.problem} — {WARRANTY_CLAIM_STATUS.label(claim.status)}
+                            {claim.status === "NEGADO" && claim.decisionNote ? ` (${claim.decisionNote})` : ""}
+                          </span>
+                        )}
+                      </span>
+                      <StatusBadge tone={expired ? "gray" : "green"}>{expired ? `venceu ${formatDate(w.endDate)}` : `até ${formatDate(w.endDate)}`}</StatusBadge>
+                    </Link>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          )}
+
           {(c.tasks.length > 0 || c.campaignSends.length > 0) && (
             <Card>
               <CardHeader>

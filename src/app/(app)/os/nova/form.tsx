@@ -22,12 +22,14 @@ import { imeiText } from "@/lib/format";
 type DeviceOption = { id: string; label: string; imei: string | null; status: string; battery: number | null };
 
 export function NewServiceOrderForm({
+  catalog,
   technicians,
   devices,
   defaultDeviceId,
   defaultCustomer,
   defaultTechnicianId,
 }: {
+  catalog: { id: string; name: string; colors: string[] }[];
   technicians: { id: string; name: string; role: string }[];
   devices: DeviceOption[];
   defaultDeviceId: string | null;
@@ -42,6 +44,9 @@ export function NewServiceOrderForm({
   const [imei, setImei] = useState("");
   const [linked, setLinked] = useState<{ id: string; name: string; status: string } | null>(null);
   const [description, setDescription] = useState("");
+  const [modelId, setModelId] = useState("");
+  const [color, setColor] = useState("");
+  const clientModel = catalog.find((m) => m.id === modelId);
   const [problem, setProblem] = useState("");
   const [services, setServices] = useState("");
   const [technicianId, setTechnicianId] = useState(defaultTechnicianId ?? "");
@@ -65,6 +70,8 @@ export function NewServiceOrderForm({
       kind,
       deviceId: kind === "INTERNA" ? deviceId : (linked?.id ?? null),
       deviceDescription: kind === "CLIENTE" ? description || linked?.name || null : null,
+      modelId: kind === "CLIENTE" && !linked ? modelId || null : null,
+      color: kind === "CLIENTE" && !linked ? color || null : null,
       imei: kind === "CLIENTE" ? imei.replace(/\D/g, "") || null : null,
       customerId: kind === "CLIENTE" ? (customer?.id ?? null) : null,
       technicianId: technicianId || null,
@@ -176,9 +183,33 @@ export function NewServiceOrderForm({
                     onLookup={(r) => setLinked(r.existing && !r.existing.deleted ? r.existing : null)}
                   />
                 </FormField>
-                <FormField label="Aparelho" required={!linked} hint={linked ? `Reconhecido no sistema: ${linked.name} (${DEVICE_STATUS.label(linked.status)})${linked.status === "VENDIDO" ? " — vendido pela loja" : ""}` : "Ex.: iPhone 13 128GB azul"}>
-                  <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder={linked?.name ?? "Modelo, capacidade e cor"} />
-                </FormField>
+                {linked ? (
+                  <FormField label="Aparelho" hint={`Reconhecido no sistema: ${linked.name} (${DEVICE_STATUS.label(linked.status)})${linked.status === "VENDIDO" ? " — vendido pela loja" : ""}`}>
+                    <Input value={linked.name} disabled />
+                  </FormField>
+                ) : (
+                  <>
+                    <FormField label="Modelo" required>
+                      <NativeSelect value={modelId} onChange={(e) => { setModelId(e.target.value); setColor(""); }} className="h-9">
+                        <option value="">Selecione…</option>
+                        {catalog.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.name}
+                          </option>
+                        ))}
+                      </NativeSelect>
+                    </FormField>
+                    <FormField label="Cor">
+                      <NativeSelect value={color} onChange={(e) => setColor(e.target.value)} className="h-9" disabled={!clientModel}>
+                        <option value="">{clientModel ? "Selecione…" : "Escolha o modelo"}</option>
+                        {clientModel?.colors.map((c) => <option key={c}>{c}</option>)}
+                      </NativeSelect>
+                    </FormField>
+                    <FormField label="Detalhes (opcional)" hint="Capacidade, capinha, acessórios deixados…" className="sm:col-span-2">
+                      <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Ex.: 128GB, com capinha" />
+                    </FormField>
+                  </>
+                )}
                 <div className="sm:col-span-2">
                   <p className="mb-2 text-[13px] text-muted-foreground">Checklist de entrada (como o aparelho chegou)</p>
                   <DeviceChecklist value={checklist} onChange={setChecklist} />

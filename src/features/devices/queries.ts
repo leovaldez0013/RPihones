@@ -39,6 +39,8 @@ export type DeviceRow = {
   entryDate: string;
   daysInStock: number;
   supplier: string | null;
+  /** cliente que comprou ou para quem está reservado */
+  customer: string | null;
   /** só para quem pode ver custo */
   cost?: number;
   margin?: number;
@@ -48,9 +50,15 @@ export async function listDevices(role: string, opts: { includeSold?: boolean } 
   const showCost = can(role, "devices.viewCost");
   const devices = await db.device.findMany({
     where: { deletedAt: null, ...(opts.includeSold ? {} : { status: { not: "VENDIDO" } }) },
-    include: { model: true, supplier: true },
+    include: {
+      model: true,
+      supplier: true,
+      saleItems: { where: { active: true, sale: { status: "CONCLUIDA" } }, select: { sale: { select: { customer: { select: { name: true } } } } }, take: 1 },
+    },
     orderBy: { entryDate: "desc" },
   });
+  const reservedIds = [...new Set(devices.map((d) => d.reservedCustomerId).filter(Boolean))] as string[];
+  const reserved = new Map((reservedIds.length ? await db.customer.findMany({ where: { id: { in: reservedIds } }, select: { id: true, name: true } }) : []).map((c) => [c.id, c.name]));
   return devices.map((d) => {
     const cost = d.acquisitionCost + d.serviceCost;
     return {
@@ -72,6 +80,7 @@ export async function listDevices(role: string, opts: { includeSold?: boolean } 
       entryDate: d.entryDate.toISOString(),
       daysInStock: d.status === "VENDIDO" ? 0 : daysSince(d.entryDate),
       supplier: d.supplier?.name ?? null,
+      customer: d.saleItems[0]?.sale.customer?.name ?? (d.reservedCustomerId ? (reserved.get(d.reservedCustomerId) ?? null) : null),
       ...(showCost ? { cost, margin: d.salePrice - cost } : {}),
     };
   });

@@ -35,3 +35,11 @@ export const deleteSimulationAction = action({ schema: z.object({}), permission:
   all();
   return true;
 });
+
+export const runAppTestAction = action({ schema: z.object({}), permission: "simulation.manage" }, async (_i, { user }) => {
+  const { runAppTest } = await import("./selftest");
+  const report = await runAppTest(user);
+  await audit(realDb, { userId: user.id, action: "simulation.selftest", entity: "Simulation", summary: `Teste do app: ${report.ok} OK, ${report.failed} com erro` });
+  all();
+  return { ok: report.ok, failed: report.failed };
+});

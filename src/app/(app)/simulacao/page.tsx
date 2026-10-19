@@ -12,6 +12,8 @@ import { simulationStatus } from "@/features/simulation/service";
 import { monthSummary } from "@/features/simulation/summary";
 import { RevenueChart } from "../dashboard/revenue-chart";
 import { SimulationControls } from "./controls";
+import { TestReportCard } from "./test-report";
+import { lastReport } from "@/features/simulation/selftest";
 
 export const metadata: Metadata = { title: "Simulação" };
 
@@ -42,6 +44,7 @@ export default async function SimulationPage() {
   const status = simulationStatus();
   const canManage = can(user.role, "simulation.manage");
   const s = status.active ? await monthSummary(15) : null;
+  const report = lastReport();
 
   return (
     <div className="flex flex-col gap-6">
@@ -79,10 +82,13 @@ export default async function SimulationPage() {
         </Card>
       )}
 
+      {status.supported && <TestReportCard report={report} canRun={canManage} />}
+
       {s && status.meta && (
         <>
           <p className="text-sm text-muted-foreground">
-            Gerada em {formatDateTime(status.meta.generatedAt)} por {status.meta.generatedBy} · {status.meta.devices} entradas ({status.meta.withoutImei} sem IMEI) · {status.meta.tacs} TACs simulados
+            Gerada em {formatDateTime(status.meta.generatedAt)} por {status.meta.generatedBy} · {status.meta.customers} clientes · {status.meta.devices} entradas ({status.meta.withoutImei} sem IMEI) · {status.meta.sales} vendas ({status.meta.tradeIns} com troca, {status.meta.canceledSales} devolvida) · {status.meta.serviceOrders} OS · {status.meta.orders} encomendas · {status.meta.claims} acionamentos de garantia · {status.meta.tacs} TACs simulados
+            {status.meta.skipped.length > 0 && ` · ${status.meta.skipped.length} item(ns) ignorado(s)`}
           </p>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <StatCard label="Total vendido" value={`${s.devicesSold} aparelhos`} icon={ShoppingBag} hint={`${s.count} vendas · ${s.noSaleDays} dia(s) sem venda`} />

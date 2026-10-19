@@ -10,6 +10,7 @@ import {
   Package,
   PackageSearch,
   Receipt,
+  ShieldCheck,
   ShoppingBag,
   Smartphone,
   TrendingUp,
@@ -31,6 +32,7 @@ import { getDashboard, pctDelta } from "@/features/dashboard/queries";
 import { generateAutoTasks } from "@/features/marketing/service";
 import { cn } from "@/lib/utils";
 import { RevenueChart } from "./revenue-chart";
+import { TypeChart } from "./type-chart";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -88,7 +90,7 @@ export default async function DashboardPage() {
           <StatCard label="Faturamento do mês" value={formatBRL(k.month.revenue)} icon={TrendingUp} tone="blue" delta={pctDelta(k.month.revenue, k.month.prevRevenue)} hint={`${k.month.count} vendas · vs. mesmo período`} />
           <StatCard label="Ticket médio" value={formatBRL(k.month.ticket)} icon={Receipt} tone="amber" delta={pctDelta(k.month.ticket, k.month.prevTicket)} hint="no mês" />
           {d.financial ? (
-            <StatCard label="Lucro bruto do mês" value={formatBRL(k.month.profit)} icon={CircleDollarSign} tone="green" delta={pctDelta(k.month.profit ?? 0, k.month.prevProfit ?? 0)} hint="após custo, taxas e comissões" />
+            <StatCard label="Lucro do mês" value={formatBRL(k.month.profit)} icon={CircleDollarSign} tone="green" delta={pctDelta(k.month.profit ?? 0, k.month.prevProfit ?? 0)} hint="vendas + serviços, após custos, taxas e comissões" />
           ) : (
             <StatCard label="Minha comissão no mês" value={formatBRL(k.month.commission)} icon={CircleDollarSign} tone="green" hint="vendas concluídas" />
           )}
@@ -103,8 +105,23 @@ export default async function DashboardPage() {
       )}
 
       {showSales && (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatCard label="Serviços no mês" value={formatBRL(k.month.servicesRevenue)} icon={Wrench} tone="blue" delta={pctDelta(k.month.servicesRevenue, k.month.prevServicesRevenue)} hint={`${k.month.servicesCount} OS entregue(s)`} />
+          <StatCard label="Sinais de encomendas" value={formatBRL(k.month.deposits)} icon={PackageSearch} hint={`${k.month.depositsCount} recebido(s) no mês`} />
+          <StatCard
+            label="OS abertas"
+            value={soOpen}
+            icon={AlertTriangle}
+            tone={d.serviceOrders.late ? "red" : "default"}
+            hint={<Link href="/os" className="hover:underline">{d.serviceOrders.late} atrasada(s)</Link>}
+          />
+          <StatCard label="Garantias vencendo" value={d.warrantiesExpiring} icon={ShieldCheck} tone={d.warrantiesExpiring ? "amber" : "default"} hint={<Link href="/garantias?aba=vencendo" className="hover:underline">nos próximos 7 dias</Link>} />
+        </div>
+      )}
+
+      {showSales && (
         <div className="grid gap-6 lg:grid-cols-3">
-          <Section title="Faturamento diário — últimos 30 dias" href="/vendas" linkLabel="Vendas" className="lg:col-span-2">
+          <Section title="Vendas por dia — últimos 30 dias" href="/vendas" linkLabel="Vendas" className="lg:col-span-2">
             <RevenueChart data={d.days} />
           </Section>
           <Section title="Mais vendidos no mês" icon={Smartphone} href={can(user.role, "reports.view") ? "/relatorios?tipo=margem" : undefined} linkLabel="Relatórios">
@@ -129,6 +146,12 @@ export default async function DashboardPage() {
             )}
           </Section>
         </div>
+      )}
+
+      {showSales && (
+        <Section title="Faturamento por tipo — vendas × serviços (30 dias)" href={can(user.role, "reports.view") ? "/relatorios" : undefined} linkLabel="Relatórios">
+          <TypeChart data={d.days} />
+        </Section>
       )}
 
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">

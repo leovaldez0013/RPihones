@@ -32,6 +32,9 @@ export const PERMISSIONS = {
   "serviceOrders.view": ["ADMIN", "GERENTE", "VENDEDOR", "TECNICO"],
   "serviceOrders.edit": ["ADMIN", "GERENTE", "VENDEDOR", "TECNICO"],
 
+  "warranty.view": ["ADMIN", "GERENTE", "VENDEDOR", "TECNICO"],
+  "warranty.decide": ["ADMIN", "GERENTE", "TECNICO"],
+
   "imei.check": ["ADMIN", "GERENTE", "VENDEDOR", "TECNICO"],
 
   "documents.view": ["ADMIN", "GERENTE", "VENDEDOR", "TECNICO"],

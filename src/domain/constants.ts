@@ -106,8 +106,8 @@ export type PaymentMethod = (typeof PAYMENT_METHOD.values)[number];
 export const CARD_BRANDS = ["TODAS", "VISA", "MASTER", "ELO", "AMEX", "HIPER"] as const;
 
 export const ORDER_STATUS = options([
-  { value: "ABERTA", label: "Aberta", tone: "blue" },
-  { value: "EM_BUSCA", label: "Em busca", tone: "purple" },
+  { value: "ABERTA", label: "Pendente", tone: "blue" },
+  { value: "EM_BUSCA", label: "Encomendado", tone: "purple" },
   { value: "CHEGOU", label: "Chegou", tone: "teal" },
   { value: "CLIENTE_AVISADO", label: "Cliente avisado", tone: "amber" },
   { value: "ENTREGUE", label: "Entregue", tone: "green" },
@@ -116,7 +116,7 @@ export const ORDER_STATUS = options([
 
 export const SO_STATUS = options([
   { value: "ABERTA", label: "Aberta", tone: "blue" },
-  { value: "DIAGNOSTICO", label: "Em diagnóstico", tone: "purple" },
+  { value: "DIAGNOSTICO", label: "Em análise", tone: "purple" },
   { value: "AGUARDANDO_PECA", label: "Aguardando peça", tone: "amber" },
   { value: "EM_REPARO", label: "Em reparo", tone: "pink" },
   { value: "PRONTA", label: "Pronta", tone: "teal" },
@@ -134,6 +134,14 @@ export const SO_PRIORITY = options([
 export const SO_KIND = options([
   { value: "INTERNA", label: "Interna (preparação)", tone: "purple" },
   { value: "CLIENTE", label: "Cliente", tone: "blue" },
+  { value: "GARANTIA", label: "Garantia", tone: "teal" },
+]);
+
+export const WARRANTY_CLAIM_STATUS = options([
+  { value: "EM_ANALISE", label: "Em análise", tone: "blue" },
+  { value: "APROVADO", label: "Aprovado — em reparo", tone: "amber" },
+  { value: "CONCLUIDO", label: "Concluído", tone: "green" },
+  { value: "NEGADO", label: "Negado", tone: "red" },
 ]);
 
 export const ENTRY_STATUS = options([

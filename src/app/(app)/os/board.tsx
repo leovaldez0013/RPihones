@@ -266,7 +266,7 @@ function CardView({ card, dragging }: { card: SoCard; dragging?: boolean }) {
         <span className="flex items-center gap-1">
           {(card.priority === "ALTA" || card.priority === "URGENTE") && <StatusBadge value={card.priority} options={SO_PRIORITY} className="h-5 px-2" />}
           <StatusBadge value={card.kind} options={SO_KIND} className="h-5 px-2">
-            {card.kind === "INTERNA" ? "Interna" : "Cliente"}
+            {card.kind === "INTERNA" ? "Interna" : card.kind === "GARANTIA" ? "Garantia" : "Cliente"}
           </StatusBadge>
         </span>
       </div>

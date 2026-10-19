@@ -16,7 +16,7 @@ import { OrderActions } from "./order-actions";
 
 export const metadata: Metadata = { title: "Encomenda" };
 
-const STEPS = ["ABERTA", "EM_BUSCA", "CHEGOU", "CLIENTE_AVISADO", "ENTREGUE"];
+const STEPS = ["ABERTA", "EM_BUSCA", "CHEGOU", "ENTREGUE"];
 
 export default async function OrderPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requirePage("orders.view");
@@ -30,7 +30,9 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
     can(user.role, "finance.view") ? db.financialEntry.findMany({ where: { originType: "ENCOMENDA", originId: o.id } }) : [],
     db.storeSettings.findUnique({ where: { id: "default" }, select: { name: true } }),
   ]);
-  const step = STEPS.indexOf(o.status);
+  // "cliente avisado" é um detalhe da etapa "Chegou"
+  const step = STEPS.indexOf(o.status === "CLIENTE_AVISADO" ? "CHEGOU" : o.status);
+  const model = o.modelId ? await db.deviceModel.findUnique({ where: { id: o.modelId } }) : null;
   const open = !["ENTREGUE", "CANCELADA"].includes(o.status);
 
   return (
@@ -51,6 +53,16 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
               status={o.status}
               hasDevice={!!o.deviceId}
               deposit={o.deposit}
+              agreedPrice={o.agreedPrice}
+              devicePrice={device?.salePrice ?? null}
+              arrival={{
+                capacities: model ? JSON.parse(model.capacities) : [],
+                colors: model ? JSON.parse(model.colors) : [],
+                capacity: o.capacity ?? "",
+                color: o.color ?? "",
+                condition: o.condition ?? "SEMINOVO",
+                price: o.agreedPrice ?? o.maxPrice ?? 0,
+              }}
               canSell={can(user.role, "sales.create")}
               whatsapp={
                 o.customer.phone && device
@@ -66,7 +78,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
       />
 
       {o.status !== "CANCELADA" && (
-        <div className="mb-6 grid grid-cols-5 gap-1.5">
+        <div className="mb-6 grid grid-cols-4 gap-1.5">
           {STEPS.map((s, i) => (
             <div key={s} className="flex flex-col gap-1.5">
               <div className={`h-1.5 rounded-full ${i <= step ? "bg-primary" : "bg-muted"}`} />
@@ -101,11 +113,15 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                   <dd className="font-medium">{o.condition ? DEVICE_CONDITION.label(o.condition) : "qualquer"}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-muted-foreground">Faixa de preço</dt>
+                  <dt className="text-xs text-muted-foreground">Valor combinado</dt>
+                  <dd className="font-medium">{o.agreedPrice ? formatBRL(o.agreedPrice) : "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">Faixa de preço (busca)</dt>
                   <dd className="font-medium">{o.minPrice || o.maxPrice ? `${o.minPrice ? formatBRL(o.minPrice) : "—"} a ${o.maxPrice ? formatBRL(o.maxPrice) : "—"}` : "a combinar"}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-muted-foreground">Previsão</dt>
+                  <dt className="text-xs text-muted-foreground">Previsão de chegada</dt>
                   <dd className="font-medium">{formatDate(o.dueDate)}</dd>
                 </div>
               </dl>
