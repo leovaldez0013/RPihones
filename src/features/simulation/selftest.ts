@@ -1,11 +1,9 @@
 // "Teste do app": exercita cada função com os mesmos serviços das telas, dentro da simulação,
 // e confere o painel contra a soma dos registros. No fim apaga a simulação, verifica que o banco
 // real ficou idêntico e gera uma simulação nova e limpa para você explorar.
-import fs from "node:fs";
-import path from "node:path";
 import { createHash } from "node:crypto";
 import type { PrismaClient } from "@prisma/client";
-import { SIM_DB_FILE, isSimulation, realDb, simClient } from "@/lib/db";
+import { realDb, simClient, simulationActive } from "@/lib/db";
 import { makeImei, validateImei } from "@/domain/imei";
 import { TRADE_IN_CHECKLIST } from "@/domain/constants";
 import { matchesSearch } from "@/lib/search";
@@ -21,16 +19,15 @@ import { orderSchema } from "@/features/orders/schemas";
 import { cancelOrder, deliverOrder, registerArrival, saveOrder, setOrderStatus } from "@/features/orders/service";
 import { approveClaim, claimWarranty, denyClaim } from "@/features/warranty/service";
 import { getDashboard } from "@/features/dashboard/queries";
-import { deleteSimulation, generateSimulation, type SimulationMeta } from "./service";
+import { deleteSimulation, generateSimulation, loadTestReport, saveTestReport, simulationExists, type SimulationMeta } from "./service";
 
-const REPORT_FILE = path.join(path.dirname(SIM_DB_FILE), "teste-app.json");
 const DAY = 86400000;
 
 export type TestItem = { group: string; name: string; ok: boolean; detail: string };
 export type TestReport = { startedAt: string; finishedAt: string; ok: number; failed: number; items: TestItem[]; meta: SimulationMeta | null };
 
-export function lastReport(): TestReport | null {
-  return fs.existsSync(REPORT_FILE) ? (JSON.parse(fs.readFileSync(REPORT_FILE, "utf8")) as TestReport) : null;
+export function lastReport() {
+  return loadTestReport<TestReport>();
 }
 
 /** Impressão digital do banco real (dados de negócio), para provar que a simulação não o alterou. */
@@ -71,7 +68,7 @@ export async function runAppTest(user: { id: string; name: string; role: string 
 
   const realBefore = await fingerprint(realDb);
   const meta = await generateSimulation(user);
-  expect(isSimulation(), "modo simulação não ativou");
+  expect(await simulationActive(), "modo simulação não ativou");
   const sim = simClient();
   const tx = <T,>(fn: (t: Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0]) => Promise<T>) => sim.$transaction(fn, { timeout: 30000 });
   const actor = { id: user.id, role: "ADMIN" };
@@ -442,8 +439,8 @@ export async function runAppTest(user: { id: string; name: string; role: string 
   // ── Simulação × dados reais ──
   await t("Simulação", "Apagar a simulação não afeta os dados reais", async () => {
     await deleteSimulation();
-    expect(!fs.existsSync(SIM_DB_FILE), "arquivo da simulação continua existindo");
-    expect(!isSimulation(), "modo simulação continua ligado");
+    expect(!(await simulationExists()), "a simulação continua existindo");
+    expect(!(await simulationActive()), "modo simulação continua ligado");
     const realAfter = await fingerprint(realDb);
     expect(realAfter.hash === realBefore.hash, `dados reais mudaram: ${JSON.stringify(realBefore.counts)} → ${JSON.stringify(realAfter.counts)}`);
     return `Banco real idêntico antes e depois (${realAfter.counts.device} aparelho(s), ${realAfter.counts.sale} venda(s) reais)`;
@@ -453,6 +450,6 @@ export async function runAppTest(user: { id: string; name: string; role: string 
   const fresh = await generateSimulation(user);
   const report: TestReport = { startedAt, finishedAt: new Date().toISOString(), ok: items.filter((i) => i.ok).length, failed: items.filter((i) => !i.ok).length, items, meta: fresh };
   void meta;
-  fs.writeFileSync(REPORT_FILE, JSON.stringify(report, null, 2));
+  await saveTestReport(report);
   return report;
 }

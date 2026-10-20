@@ -73,6 +73,15 @@ model Notification {
 
 // ─────────────────────────── Configurações ───────────────────────────
 
+/// Estado do modo simulação (fica no banco real; no PostgreSQL é o que liga/desliga a simulação em todas as instâncias)
+model SimulationState {
+  id        String   @id @default("default")
+  active    Boolean  @default(false)
+  meta      String?
+  report    String?
+  updatedAt DateTime @updatedAt
+}
+
 model StoreSettings {
   id                   String   @id @default("default")
   name                 String   @default("Minha Loja")

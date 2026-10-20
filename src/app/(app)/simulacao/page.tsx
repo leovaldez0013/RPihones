@@ -16,6 +16,8 @@ import { TestReportCard } from "./test-report";
 import { lastReport } from "@/features/simulation/selftest";
 
 export const metadata: Metadata = { title: "Simulação" };
+// gerar a simulação e rodar o "Teste do app" levam alguns segundos a mais no banco remoto
+export const maxDuration = 300;
 
 function Ranking({ items, empty }: { items: { name: string; count: number; revenue: number }[]; empty: string }) {
   if (!items.length) return <p className="text-sm text-muted-foreground">{empty}</p>;
@@ -41,10 +43,10 @@ function Ranking({ items, empty }: { items: { name: string; count: number; reven
 
 export default async function SimulationPage() {
   const user = await requirePage("dashboard.view");
-  const status = simulationStatus();
+  const status = await simulationStatus();
   const canManage = can(user.role, "simulation.manage");
   const s = status.active ? await monthSummary(15) : null;
-  const report = lastReport();
+  const report = await lastReport();
 
   return (
     <div className="flex flex-col gap-6">
@@ -56,7 +58,7 @@ export default async function SimulationPage() {
 
       {!status.supported && (
         <Card>
-          <CardContent className="text-sm text-muted-foreground">A simulação funciona com o banco local (SQLite). Em produção, use um banco de testes separado.</CardContent>
+          <CardContent className="text-sm text-muted-foreground">A simulação precisa de um banco SQLite ou PostgreSQL.</CardContent>
         </Card>
       )}
 

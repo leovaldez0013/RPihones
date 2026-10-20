@@ -6,12 +6,13 @@ import { MobileNav } from "@/components/layout/mobile-nav";
 import { requirePage } from "@/lib/session";
 import Link from "next/link";
 import { FlaskConical } from "lucide-react";
-import { db, isSimulation } from "@/lib/db";
+import { db, simulationActive } from "@/lib/db";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requirePage();
   const cookieStore = await cookies();
   const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
+  const simulation = await simulationActive();
 
   const [store, notifications] = await Promise.all([
     db.storeSettings.findUnique({ where: { id: "default" }, select: { name: true } }),
@@ -26,7 +27,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <SidebarProvider defaultOpen={defaultOpen}>
       <AppSidebar role={user.role} storeName={store?.name ?? "RP iPhones"} />
       <SidebarInset className="min-w-0">
-        {isSimulation() && (
+        {simulation && (
           <div role="status" className="sticky top-0 z-40 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-amber-400 px-4 py-1.5 text-center text-sm font-medium text-amber-950">
             <span className="inline-flex items-center gap-1.5 font-bold tracking-wide">
               <FlaskConical className="size-4" /> MODO SIMULAÇÃO

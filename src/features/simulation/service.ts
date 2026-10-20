@@ -1,12 +1,12 @@
-// Modo simulação: 1 mês de operação fictícia num banco separado (prisma/simulacao.db).
+// Modo simulação: 1 mês de operação fictícia separada dos dados reais — num arquivo à parte no SQLite
+// (prisma/simulacao.db) ou no schema "simulacao" do PostgreSQL.
 // O banco real nunca é tocado: a simulação começa como cópia das configurações (usuários, loja,
 // catálogo, taxas, acessórios, TACs reais) e todo o resto é gerado nela usando os MESMOS serviços
 // do app (vendas, OS, encomendas, garantias), depois "movidos" para as datas do mês.
 import fs from "node:fs";
-import path from "node:path";
 import type { PrismaClient } from "@prisma/client";
 import { BusinessError } from "@/lib/errors";
-import { SIM_DB_FILE, closeSimClient, isSimulation, realDb, realDbFile, setSimulationMode, simClient, simulationSupported } from "@/lib/db";
+import { SIM_DB_FILE, SIM_SCHEMA, closeSimClient, realDb, realDbFile, setSimulationMode, simClient, simulationActive, simulationBackend, simulationSupported } from "@/lib/db";
 import { makeImei } from "@/domain/imei";
 import { priceFor } from "@/domain/pricing";
 import { TRADE_IN_CHECKLIST } from "@/domain/constants";
@@ -21,7 +21,6 @@ import { cancelOrder, deliverOrder, registerArrival, saveOrder, setOrderStatus }
 import { approveClaim, claimWarranty, denyClaim } from "@/features/warranty/service";
 import { getWarrantyDays } from "@/features/sales/config";
 
-const META_FILE = path.join(path.dirname(SIM_DB_FILE), "simulacao.json");
 const DAY = 86400000;
 
 export type SimulationCase = { key: "LUHN" | "DUPLICADO" | "TAC"; title: string; imei: string; detail: string; result: string; ok: boolean };
@@ -43,10 +42,33 @@ export type SimulationMeta = {
   cases: SimulationCase[];
 };
 
-export function simulationStatus() {
-  const exists = fs.existsSync(SIM_DB_FILE);
-  const meta = exists && fs.existsSync(META_FILE) ? (JSON.parse(fs.readFileSync(META_FILE, "utf8")) as SimulationMeta) : null;
-  return { supported: simulationSupported(), exists, active: isSimulation(), meta };
+/** A simulação existe (arquivo no SQLite, schema no PostgreSQL)? */
+export async function simulationExists() {
+  if (simulationBackend() === "sqlite") return fs.existsSync(SIM_DB_FILE);
+  const rows = await realDb.$queryRawUnsafe<unknown[]>(`SELECT 1 FROM information_schema.schemata WHERE schema_name = '${SIM_SCHEMA}'`);
+  return rows.length > 0;
+}
+
+/** Resumo da simulação e relatório do "Teste do app" ficam no banco real (SimulationState). */
+async function saveState(data: { meta?: SimulationMeta | null; report?: string | null }) {
+  const values = { ...("meta" in data ? { meta: data.meta ? JSON.stringify(data.meta) : null } : {}), ...("report" in data ? { report: data.report } : {}) };
+  await realDb.simulationState.upsert({ where: { id: "default" }, create: values, update: values });
+}
+
+export async function simulationStatus() {
+  const exists = simulationSupported() && (await simulationExists());
+  const state = exists ? await realDb.simulationState.findUnique({ where: { id: "default" } }) : null;
+  const meta = state?.meta ? (JSON.parse(state.meta) as SimulationMeta) : null;
+  return { supported: simulationSupported(), exists, active: exists && (await simulationActive()), meta };
+}
+
+export async function saveTestReport(report: unknown) {
+  await saveState({ report: JSON.stringify(report) });
+}
+
+export async function loadTestReport<T>(): Promise<T | null> {
+  const state = await realDb.simulationState.findUnique({ where: { id: "default" } });
+  return state?.report ? (JSON.parse(state.report) as T) : null;
 }
 
 /** Gerador pseudoaleatório (mulberry32): cada simulação nova é diferente, mas estável durante a geração. */
@@ -77,17 +99,47 @@ const OPERATIONAL = [
   "CashMovement", "CashSession", "FinancialEntry", "Task", "CampaignSend", "Device", "Customer", "Supplier", "Sequence",
 ];
 
-async function freshCopy(): Promise<PrismaClient> {
-  setSimulationMode(false);
+/** Remove a simulação (arquivo ou schema) sem tocar no banco real. */
+async function dropSimulation() {
+  await setSimulationMode(false);
   await closeSimClient();
-  for (const f of [SIM_DB_FILE, `${SIM_DB_FILE}-journal`, META_FILE]) if (fs.existsSync(f)) fs.unlinkSync(f);
-  if (!fs.existsSync(realDbFile())) throw new BusinessError("Banco real não encontrado.");
-  // cópia consistente do banco real (configurações incluídas); o original só é lido
-  await realDb.$executeRawUnsafe(`VACUUM INTO '${SIM_DB_FILE.replace(/'/g, "''")}'`);
+  if (simulationBackend() === "sqlite") {
+    for (const f of [SIM_DB_FILE, `${SIM_DB_FILE}-journal`]) if (fs.existsSync(f)) fs.unlinkSync(f);
+  } else {
+    await realDb.$executeRawUnsafe(`DROP SCHEMA IF EXISTS "${SIM_SCHEMA}" CASCADE`);
+  }
+  await saveState({ meta: null });
+}
+
+async function freshCopy(): Promise<PrismaClient> {
+  await dropSimulation();
+  if (simulationBackend() === "sqlite") {
+    if (!fs.existsSync(realDbFile())) throw new BusinessError("Banco real não encontrado.");
+    // cópia consistente do banco real (configurações incluídas); o original só é lido
+    await realDb.$executeRawUnsafe(`VACUUM INTO '${SIM_DB_FILE.replace(/'/g, "''")}'`);
+    const sim = simClient();
+    await sim.$executeRawUnsafe("PRAGMA foreign_keys = OFF");
+    for (const t of OPERATIONAL) await sim.$executeRawUnsafe(`DELETE FROM "${t}"`);
+    await sim.$executeRawUnsafe("PRAGMA foreign_keys = ON");
+    await sim.financialAccount.updateMany({ data: { initialBalance: 0 } });
+    return sim;
+  }
+  // PostgreSQL: schema "simulacao" com a mesma estrutura das tabelas reais (colunas, padrões, índices e
+  // chaves únicas) e só as configurações copiadas; o schema real só é lido
+  const tables = await realDb.$queryRawUnsafe<{ name: string }[]>(
+    `SELECT table_name AS name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name NOT LIKE '\\_prisma%'`,
+  );
+  await realDb.$transaction(
+    async (tx) => {
+      await tx.$executeRawUnsafe(`CREATE SCHEMA "${SIM_SCHEMA}"`);
+      for (const { name } of tables) {
+        await tx.$executeRawUnsafe(`CREATE TABLE "${SIM_SCHEMA}"."${name}" (LIKE public."${name}" INCLUDING ALL)`);
+        if (!OPERATIONAL.includes(name) && name !== "SimulationState") await tx.$executeRawUnsafe(`INSERT INTO "${SIM_SCHEMA}"."${name}" SELECT * FROM public."${name}"`);
+      }
+    },
+    { timeout: 60000 },
+  );
   const sim = simClient();
-  await sim.$executeRawUnsafe("PRAGMA foreign_keys = OFF");
-  for (const t of OPERATIONAL) await sim.$executeRawUnsafe(`DELETE FROM "${t}"`);
-  await sim.$executeRawUnsafe("PRAGMA foreign_keys = ON");
   await sim.financialAccount.updateMany({ data: { initialBalance: 0 } });
   return sim;
 }
@@ -161,9 +213,9 @@ async function moveOrderTo(sim: PrismaClient, orderId: string, when: Date) {
 }
 
 export async function generateSimulation(user: { id: string; name: string; role: string }): Promise<SimulationMeta> {
-  if (!simulationSupported()) throw new BusinessError("A simulação funciona com o banco local (SQLite). Em produção, use um banco de testes separado.");
+  if (!simulationSupported()) throw new BusinessError("A simulação precisa de SQLite ou PostgreSQL.");
   const sim = await freshCopy();
-  setSimulationMode(true);
+  await setSimulationMode(true);
   const r = rng(Date.now());
   const now = new Date();
   const start = new Date(now.getTime() - 29 * DAY);
@@ -519,23 +571,22 @@ export async function generateSimulation(user: { id: string; name: string; role:
     skipped,
     cases,
   };
-  fs.writeFileSync(META_FILE, JSON.stringify(meta, null, 2));
+  await saveState({ meta });
   return meta;
 }
 
-/** Sai do modo simulação mantendo o arquivo (dá para voltar depois). */
-export function pauseSimulation() {
-  setSimulationMode(false);
+/** Sai do modo simulação mantendo os dados simulados (dá para voltar depois). */
+export async function pauseSimulation() {
+  await setSimulationMode(false);
 }
 
-export function resumeSimulation() {
-  if (!fs.existsSync(SIM_DB_FILE)) throw new BusinessError("Não há simulação gerada.");
-  setSimulationMode(true);
+export async function resumeSimulation() {
+  if (!(await simulationExists())) throw new BusinessError("Não há simulação gerada.");
+  await setSimulationMode(true);
 }
 
 /** Apaga só a simulação; o banco real não é tocado. */
 export async function deleteSimulation() {
-  setSimulationMode(false);
-  await closeSimClient();
-  for (const f of [SIM_DB_FILE, `${SIM_DB_FILE}-journal`, META_FILE]) if (fs.existsSync(f)) fs.unlinkSync(f);
+  await dropSimulation();
 }
+

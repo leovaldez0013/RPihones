@@ -18,13 +18,13 @@ export const generateSimulationAction = action({ schema: z.object({}), permissio
 });
 
 export const pauseSimulationAction = action({ schema: z.object({}), permission: "simulation.manage" }, async () => {
-  pauseSimulation();
+  await pauseSimulation();
   all();
   return true;
 });
 
 export const resumeSimulationAction = action({ schema: z.object({}), permission: "simulation.manage" }, async () => {
-  resumeSimulation();
+  await resumeSimulation();
   all();
   return true;
 });
