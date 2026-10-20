@@ -59,6 +59,8 @@ Quer conhecer o sistema com dados fictícios (6 meses de vendas, OS, encomendas�
 | `AUTH_SECRET` | sim | Segredo do login. Gere com `npx auth secret` |
 | `AUTH_TRUST_HOST` | sim | `true` |
 | `CRON_SECRET` | não | Protege `/api/cron/tarefas` (tarefas automáticas) |
+| `DIRECT_URL` | não | Conexão direta do PostgreSQL (quando `DATABASE_URL` usa pooler) |
+| `BLOB_READ_WRITE_TOKEN` | produção | Vercel Blob: fotos e anexos (sem ele, vão para `public/uploads`) |
 | `IMEI_API_URL` / `IMEI_API_KEY` | não | API externa de consulta de IMEI (também configurável na tela) |
 
 ## Scripts
@@ -77,17 +79,44 @@ Quer conhecer o sistema com dados fictícios (6 meses de vendas, OS, encomendas�
 | `npm run db:reset:demo` | **Apaga tudo** e roda o seed de demonstração |
 | `npm run catalog:sync` | Adiciona ao banco os modelos novos de `prisma/data/catalog.ts` (ex.: iPhone 18) sem apagar nada |
 | `npm run db:studio` | Abre o Prisma Studio |
-| `npm run db:postgres` | Troca o provider do schema para PostgreSQL |
+| `npm run test:postgres` | Roda os testes e o seed num PostgreSQL portátil (verificação antes do deploy) |
 
-## Deploy (Vercel + Neon/Supabase)
+## Deploy (Vercel + Neon)
 
-1. Crie um banco PostgreSQL no [Neon](https://neon.tech) ou [Supabase](https://supabase.com) e copie a connection string.
-2. Localmente rode `npm run db:postgres` (altera `prisma/schema.prisma` para `postgresql`) e faça commit.
-3. Na Vercel, importe o repositório e configure `DATABASE_URL`, `AUTH_SECRET`, `AUTH_TRUST_HOST=true` (e `CRON_SECRET` se quiser as tarefas automáticas).
-4. Com a `DATABASE_URL` de produção no seu terminal, rode uma vez `npx prisma db push` e (opcional) `npm run db:seed`.
-5. Faça o deploy. O build roda `prisma generate` automaticamente (`postinstall`).
+O repositório fica em SQLite para o desenvolvimento. No build da Vercel, se `DATABASE_URL` for PostgreSQL, o script `scripts/prepare-db.mjs` converte o schema, gera o Prisma Client, aplica as tabelas (`prisma db push`, que recusa mudanças que apagariam dados) e roda o seed inicial (só cria usuários, loja e catálogo quando o banco está vazio).
 
-> Uploads de fotos/anexos: em desenvolvimento vão para `public/uploads`. Na Vercel o disco é temporário — para produção configure um storage (Vercel Blob/S3) na camada `src/lib/storage.ts`.
+1. **Banco:** crie um projeto no [Neon](https://neon.tech) (PostgreSQL 17, região São Paulo — *aws-sa-east-1*). Copie duas conexões: a **pooled** (host com `-pooler`) e a **direta**.
+2. **Vercel:** importe o repositório do GitHub (framework Next.js, sem mudar os comandos).
+3. **Armazenamento de fotos:** no projeto da Vercel, *Storage → Create → Blob* e conecte ao projeto. A Vercel cria a variável `BLOB_READ_WRITE_TOKEN` sozinha. Fotos e anexos vão direto do navegador para o Blob (sem o limite de 4,5 MB das funções).
+4. **Variáveis de ambiente** (*Settings → Environment Variables*, em Production):
+
+   | Variável | Valor |
+   |---|---|
+   | `DATABASE_URL` | conexão **pooled** do Neon, terminando em `?sslmode=require&pgbouncer=true&connection_limit=1` |
+   | `DIRECT_URL` | conexão **direta** do Neon (`?sslmode=require`) — usada para criar as tabelas |
+   | `AUTH_SECRET` | gere com `npx auth secret` |
+   | `AUTH_TRUST_HOST` | `true` |
+   | `CRON_SECRET` | um texto aleatório longo (tarefas automáticas diárias, `vercel.json`) |
+   | `BLOB_READ_WRITE_TOKEN` | criada no passo 3 |
+   | `IMEI_API_URL` / `IMEI_API_KEY` | opcionais (consulta de bloqueio) |
+
+5. **Deploy.** No primeiro build as tabelas e os usuários iniciais são criados. Entre com `admin@rpiphones.com.br` / `admin123` e **troque todas as senhas** em Configurações → Usuários (e desative os usuários que não forem da loja).
+6. Ajuste os dados da loja, as taxas da maquininha, os saldos iniciais das contas e o provedor de IMEI.
+
+Observações:
+- Previews da Vercel usam as mesmas variáveis se você marcá-las também em *Preview*; para não mexer no banco real a partir de previews, deixe `DATABASE_URL` só em Production.
+- `DB_PUSH_ON_BUILD=0` e `SEED_ON_BUILD=0` desligam a criação automática de tabelas/seed no build.
+- O modo **Simulação** e o **Teste do app** funcionam só com o banco local (SQLite); em produção a tela avisa e não faz nada.
+- O plano gratuito (Hobby) da Vercel é para uso não comercial; para a loja, use o plano Pro.
+- Backup: o Neon guarda o histórico do banco (restauração por data); o botão Configurações → Backup baixa um JSON completo.
+
+### Testar no PostgreSQL antes de subir
+
+```bash
+npm run test:postgres
+```
+
+Sobe um PostgreSQL 17 portátil (sem instalar nada), roda todos os testes automáticos e o seed de demonstração nele e volta o ambiente para SQLite. Pare o `npm run dev` antes. Com `-- --serve`, deixa o banco ligado com a demonstração para abrir o app nele.
 
 ## Estrutura
 

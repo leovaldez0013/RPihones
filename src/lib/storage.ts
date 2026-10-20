@@ -2,23 +2,28 @@ import "server-only";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { checkUpload, uploadExt, uploadFolder } from "./upload-rules";
 
-const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "application/pdf"]);
-const MAX_BYTES = 8 * 1024 * 1024;
+/** Arquivos vão para o Vercel Blob quando o token existe (produção); senão, para public/uploads (desenvolvimento). */
+export function blobEnabled() {
+  return !!process.env.BLOB_READ_WRITE_TOKEN;
+}
 
-/**
- * Salva um arquivo enviado e devolve a URL pública.
- * Desenvolvimento: grava em public/uploads. Em produção (Vercel), troque esta função
- * por Vercel Blob/S3 — o resto do sistema só usa a URL retornada.
- */
+/** Salva um arquivo enviado e devolve a URL pública. O resto do sistema só usa a URL. */
 export async function saveUpload(file: File, folder = "geral"): Promise<string> {
-  if (!ALLOWED.has(file.type)) throw new Error(`Tipo de arquivo não permitido: ${file.type || "desconhecido"}`);
-  if (file.size > MAX_BYTES) throw new Error("Arquivo maior que 8 MB");
-  const ext = file.type === "application/pdf" ? "pdf" : file.type.split("/")[1].replace("jpeg", "jpg");
-  const safeFolder = folder.replace(/[^a-z0-9-]/gi, "");
-  const dir = path.join(process.cwd(), "public", "uploads", safeFolder);
-  await mkdir(dir, { recursive: true });
-  const name = `${Date.now()}-${randomUUID().slice(0, 8)}.${ext}`;
-  await writeFile(path.join(dir, name), Buffer.from(await file.arrayBuffer()));
-  return `/uploads/${safeFolder}/${name}`;
+  const problem = checkUpload(file);
+  if (problem) throw new Error(problem);
+  const dir = uploadFolder(folder);
+  const name = `${Date.now()}-${randomUUID().slice(0, 8)}.${uploadExt(file.type)}`;
+
+  if (blobEnabled()) {
+    const { put } = await import("@vercel/blob");
+    const blob = await put(`${dir}/${name}`, file, { access: "public", contentType: file.type });
+    return blob.url;
+  }
+
+  const abs = path.join(process.cwd(), "public", "uploads", dir);
+  await mkdir(abs, { recursive: true });
+  await writeFile(path.join(abs, name), Buffer.from(await file.arrayBuffer()));
+  return `/uploads/${dir}/${name}`;
 }

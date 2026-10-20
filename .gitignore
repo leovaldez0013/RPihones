@@ -52,3 +52,5 @@ next-env.d.ts
 /prisma/simulacao.json
 /prisma/.simulacao-ativa
 /prisma/teste-app.json
+/prisma/schema.postgres.prisma
+/.pg-test/

@@ -7,7 +7,8 @@ export default defineConfig({
     environment: "node",
     include: ["tests/**/*.test.ts"],
     globalSetup: ["tests/global-setup.ts"],
-    env: { DATABASE_URL: "file:./test.db", TZ: "America/Sao_Paulo" },
+    // npm run test:postgres define TEST_DATABASE_URL (PostgreSQL); o padrão é um SQLite descartável
+    env: { DATABASE_URL: process.env.TEST_DATABASE_URL ?? "file:./test.db", TZ: "America/Sao_Paulo" },
     fileParallelism: false,
     testTimeout: 20000,
   },

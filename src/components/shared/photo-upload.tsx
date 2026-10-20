@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { Camera, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { uploadFiles } from "@/features/uploads/actions";
+import { checkUpload, uploadExt, uploadFolder } from "@/lib/upload-rules";
 import { cn } from "@/lib/utils";
 
 /** Upload de fotos com miniaturas. No celular abre a câmera. */
@@ -27,17 +28,35 @@ export function PhotoUpload({
 
   async function handle(files: FileList | null) {
     if (!files?.length) return;
-    const fd = new FormData();
-    fd.set("folder", folder);
-    Array.from(files)
-      .slice(0, max - value.length)
-      .forEach((f) => fd.append("files", f));
+    const list = Array.from(files).slice(0, max - value.length);
     setLoading(true);
-    const res = await uploadFiles(fd);
-    setLoading(false);
-    if (input.current) input.current.value = "";
-    if (!res.ok) return toast.error(res.error);
-    onChange([...value, ...res.data]);
+    try {
+      if (process.env.NEXT_PUBLIC_BLOB_UPLOAD === "1") {
+        // produção: direto do navegador para o Vercel Blob (sem o limite de 4,5 MB das funções)
+        const { upload } = await import("@vercel/blob/client");
+        const dir = uploadFolder(folder);
+        const urls: string[] = [];
+        for (const f of list) {
+          const problem = checkUpload(f);
+          if (problem) throw new Error(problem);
+          const blob = await upload(`${dir}/${Date.now()}.${uploadExt(f.type)}`, f, { access: "public", handleUploadUrl: "/api/upload", clientPayload: dir, contentType: f.type });
+          urls.push(blob.url);
+        }
+        onChange([...value, ...urls]);
+      } else {
+        const fd = new FormData();
+        fd.set("folder", folder);
+        list.forEach((f) => fd.append("files", f));
+        const res = await uploadFiles(fd);
+        if (!res.ok) throw new Error(res.error);
+        onChange([...value, ...res.data]);
+      }
+    } catch (e) {
+      toast.error((e as Error).message || "Não foi possível enviar o arquivo.");
+    } finally {
+      setLoading(false);
+      if (input.current) input.current.value = "";
+    }
   }
 
   return (
