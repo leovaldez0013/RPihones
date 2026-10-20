@@ -92,8 +92,8 @@ O repositório fica em SQLite para o desenvolvimento. No build da Vercel, se `DA
 
    | Variável | Valor |
    |---|---|
-   | `DATABASE_URL` | conexão **pooled** do Neon, terminando em `?sslmode=require&pgbouncer=true&connection_limit=1` |
-   | `DIRECT_URL` | conexão **direta** do Neon (`?sslmode=require`) — usada para criar as tabelas |
+   | `DATABASE_URL` | a connection string do Neon **exatamente como copiada** (com pooling ligado). O app ajusta sozinho para o Prisma |
+   | `DIRECT_URL` | opcional — se ficar vazia, é derivada da `DATABASE_URL` (mesmo endereço sem `-pooler`) |
    | `AUTH_SECRET` | gere com `npx auth secret` |
    | `AUTH_TRUST_HOST` | `true` |
    | `CRON_SECRET` | um texto aleatório longo (tarefas automáticas diárias, `vercel.json`) |

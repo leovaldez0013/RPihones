@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { PrismaClient } from "@prisma/client";
+import { directDatabaseUrl, isPostgresUrl, normalizeDatabaseUrl } from "./db-url.mjs";
 
 // ── Banco real × banco de simulação ──
 // A simulação de 1 mês vive num arquivo separado (prisma/simulacao.db). Enquanto o modo simulação está
@@ -9,7 +10,10 @@ import { PrismaClient } from "@prisma/client";
 
 const g = globalThis as unknown as { prisma?: PrismaClient; prismaSim?: PrismaClient; simMode?: boolean };
 
-const realClient = g.prisma ?? new PrismaClient();
+// PostgreSQL (produção): a URL colada do Neon é ajustada para o Prisma (pooler, sem channel_binding)
+const databaseUrl = process.env.DATABASE_URL;
+if (isPostgresUrl(databaseUrl) && !process.env.DIRECT_URL) process.env.DIRECT_URL = directDatabaseUrl(databaseUrl!);
+const realClient = g.prisma ?? (isPostgresUrl(databaseUrl) ? new PrismaClient({ datasources: { db: { url: normalizeDatabaseUrl(databaseUrl!) } } }) : new PrismaClient());
 if (process.env.NODE_ENV !== "production") g.prisma = realClient;
 
 const PRISMA_DIR = path.join(process.cwd(), "prisma");

@@ -29,12 +29,12 @@ try {
 
   // schema PostgreSQL + Prisma Client + tabelas (mesmo caminho do build da Vercel)
   run(`node scripts/prepare-db.mjs --out=${SCHEMA} --no-seed`, { DATABASE_URL: `${BASE}/rp_test` });
-  run(`npx prisma db push --skip-generate --schema ${SCHEMA}`, { DATABASE_URL: `${BASE}/rp_demo` });
+  run(`npx prisma db push --skip-generate --schema ${SCHEMA}`, { DATABASE_URL: `${BASE}/rp_demo`, DIRECT_URL: `${BASE}/rp_demo` });
 
   // 1) todos os testes automáticos
-  run("npx vitest run", { TEST_DATABASE_URL: `${BASE}/rp_test` });
+  run("npx vitest run", { TEST_DATABASE_URL: `${BASE}/rp_test`, DIRECT_URL: `${BASE}/rp_test` });
   // 2) seed limpo + seed de demonstração (6 meses de vendas, OS, encomendas, garantias…)
-  run("npx tsx prisma/seed/index.ts --demo", { DATABASE_URL: `${BASE}/rp_demo` });
+  run("npx tsx prisma/seed/index.ts --demo", { DATABASE_URL: `${BASE}/rp_demo`, DIRECT_URL: `${BASE}/rp_demo` });
   console.log("\n✅ PostgreSQL: testes e seed de demonstração concluídos.");
 } catch (e) {
   failed = true;

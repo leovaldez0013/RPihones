@@ -11,9 +11,10 @@
 // conexão direta usada pelo db push quando DATABASE_URL aponta para um pooler.
 import { readFileSync, writeFileSync } from "node:fs";
 import { execSync } from "node:child_process";
+import { directDatabaseUrl, isPostgresUrl, normalizeDatabaseUrl } from "../src/lib/db-url.mjs";
 
 const url = process.env.DATABASE_URL ?? "";
-const isPostgres = /^postgres(ql)?:\/\//.test(url);
+const isPostgres = isPostgresUrl(url);
 const args = process.argv.slice(2);
 const flag = (name) => args.includes(`--${name}`);
 const out = args.find((a) => a.startsWith("--out="))?.slice(6) ?? "prisma/schema.prisma";
@@ -25,15 +26,21 @@ if (!isPostgres) {
 
 const schema = readFileSync("prisma/schema.prisma", "utf8");
 let pg = schema.replace(/provider\s*=\s*"sqlite"/, 'provider = "postgresql"');
-if (process.env.DIRECT_URL && !/directUrl/.test(pg)) {
+// conexão direta para criar tabelas: DIRECT_URL, se informada; senão, derivada da DATABASE_URL (sem "-pooler")
+if (!/directUrl/.test(pg)) {
   pg = pg.replace(/url\s*=\s*env\("DATABASE_URL"\)/, 'url       = env("DATABASE_URL")\n  directUrl = env("DIRECT_URL")');
 }
 writeFileSync(out, pg);
 console.log(`[prepare-db] schema PostgreSQL gravado em ${out}`);
 
+const env = {
+  ...process.env,
+  DATABASE_URL: normalizeDatabaseUrl(url),
+  DIRECT_URL: process.env.DIRECT_URL ? normalizeDatabaseUrl(process.env.DIRECT_URL) : directDatabaseUrl(url),
+};
 const run = (cmd) => {
   console.log(`[prepare-db] $ ${cmd}`);
-  execSync(cmd, { stdio: "inherit", env: process.env });
+  execSync(cmd, { stdio: "inherit", env });
 };
 
 run(`npx prisma generate --schema ${out}`);
