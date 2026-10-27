@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Smartphone } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -25,7 +24,7 @@ export function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function AppSidebar({ role, storeName }: { role: string; storeName: string }) {
+export function AppSidebar({ role, storeName, logo }: { role: string; storeName: string; logo: string }) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
 
@@ -36,9 +35,8 @@ export function AppSidebar({ role, storeName }: { role: string; storeName: strin
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild tooltip={storeName}>
               <Link href="/dashboard">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                  <Smartphone className="size-4" />
-                </div>
+                {/* eslint-disable-next-line @next/next/no-img-element -- logo pode ser link externo configurado na loja */}
+                <img src={logo} alt="" className="aspect-square size-8 shrink-0 rounded-full bg-black object-cover" />
                 <div className="grid flex-1 text-left leading-tight">
                   <span className="truncate font-semibold">{storeName}</span>
                   <span className="truncate text-xs text-muted-foreground">Gestão da loja</span>

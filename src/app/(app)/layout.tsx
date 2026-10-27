@@ -7,6 +7,7 @@ import { requirePage } from "@/lib/session";
 import Link from "next/link";
 import { FlaskConical } from "lucide-react";
 import { db, simulationActive } from "@/lib/db";
+import { storeLogo } from "@/lib/brand";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requirePage();
@@ -15,7 +16,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const simulation = await simulationActive();
 
   const [store, notifications] = await Promise.all([
-    db.storeSettings.findUnique({ where: { id: "default" }, select: { name: true } }),
+    db.storeSettings.findUnique({ where: { id: "default" }, select: { name: true, logoUrl: true } }),
     db.notification.findMany({
       where: { OR: [{ userId: user.id }, { userId: null }] },
       orderBy: { createdAt: "desc" },
@@ -25,7 +26,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <SidebarProvider defaultOpen={defaultOpen}>
-      <AppSidebar role={user.role} storeName={store?.name ?? "RP iPhones"} />
+      <AppSidebar role={user.role} storeName={store?.name ?? "RP iPhones"} logo={storeLogo(store?.logoUrl)} />
       <SidebarInset className="min-w-0">
         {simulation && (
           <div role="status" className="sticky top-0 z-40 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-amber-400 px-4 py-1.5 text-center text-sm font-medium text-amber-950">

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/shared/page-header";
 import { requirePage } from "@/lib/session";
 import { db } from "@/lib/db";
+import { storeLogo } from "@/lib/brand";
 import type { WholesaleDevice } from "@/domain/wholesale";
 import { generationOf, sortWholesale } from "@/domain/wholesale";
 import { WholesaleList } from "./wholesale-list";
@@ -25,7 +26,7 @@ export default async function WholesalePage() {
         model: { select: { id: true, name: true, family: true, year: true, sortOrder: true } },
       },
     }),
-    db.storeSettings.findUnique({ where: { id: "default" }, select: { name: true, phone: true, whatsapp: true } }),
+    db.storeSettings.findUnique({ where: { id: "default" }, select: { name: true, phone: true, whatsapp: true, logoUrl: true } }),
   ]);
 
   const items: WholesaleDevice[] = sortWholesale(
@@ -50,7 +51,7 @@ export default async function WholesalePage() {
         description="Escolha os aparelhos e gere o PDF para enviar aos lojistas. Sem IMEI, custo, fornecedor ou dados de clientes."
         back="/estoque/aparelhos"
       />
-      <WholesaleList items={items} store={{ name: store?.name ?? "RP iPhones", phone: store?.phone ?? "", whatsapp: store?.whatsapp ?? "" }} />
+      <WholesaleList items={items} store={{ name: store?.name ?? "RP iPhones", phone: store?.phone ?? "", whatsapp: store?.whatsapp ?? "", logo: storeLogo(store?.logoUrl) }} />
     </div>
   );
 }

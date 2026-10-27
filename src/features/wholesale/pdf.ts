@@ -3,7 +3,29 @@ import { formatBRL } from "@/domain/money";
 import { formatPhone } from "@/lib/format";
 import { batteryLabel, generatedAtLabel, wholesaleFileName, type BatteryBand, type WholesaleRow } from "@/domain/wholesale";
 
-export type WholesaleStore = { name: string; phone: string; whatsapp: string };
+export type WholesaleStore = { name: string; phone: string; whatsapp: string; logo?: string };
+
+/** Carrega o logo como data URL (PNG/JPG); se falhar, o PDF sai sem logo. */
+async function loadLogo(src?: string): Promise<{ data: string; format: "PNG" | "JPEG" } | null> {
+  if (!src) return null;
+  try {
+    const data = src.startsWith("data:")
+      ? src
+      : await fetch(src)
+          .then((r) => (r.ok ? r.blob() : Promise.reject(new Error(String(r.status)))))
+          .then((blob) => new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result));
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(blob);
+          }));
+    if (/^data:image\/png/i.test(data)) return { data, format: "PNG" };
+    if (/^data:image\/jpe?g/i.test(data)) return { data, format: "JPEG" };
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 type RGB = [number, number, number];
 const INK: RGB = [24, 24, 27];
@@ -37,17 +59,21 @@ export async function buildWholesalePdf(rows: WholesaleRow[], opts: PdfOptions) 
   const pageH = doc.internal.pageSize.getHeight();
   const M = 14;
 
-  // ── cabeçalho: loja e contatos ──
-  let y = M + 2;
+  // ── cabeçalho: logo, loja e contatos ──
+  const logo = await loadLogo(opts.store.logo);
+  const LOGO = 18;
+  const textX = logo ? M + LOGO + 4 : M;
+  if (logo) doc.addImage(logo.data, logo.format, M, M - 4, LOGO, LOGO);
+  let y = logo ? M + 3 : M + 2;
   doc.setFont("helvetica", "bold").setFontSize(16).setTextColor(...INK);
-  doc.text(opts.store.name, M, y);
+  doc.text(opts.store.name, textX, y);
   const contacts = [opts.store.whatsapp && `WhatsApp ${formatPhone(opts.store.whatsapp)}`, opts.store.phone && opts.store.phone !== opts.store.whatsapp && `Tel. ${formatPhone(opts.store.phone)}`].filter(Boolean).join("   ·   ");
   if (contacts) {
     y += 6;
     doc.setFont("helvetica", "normal").setFontSize(10.5).setTextColor(...MUTED);
-    doc.text(contacts, M, y);
+    doc.text(contacts, textX, y);
   }
-  y += 4;
+  y = Math.max(y + 4, logo ? M - 4 + LOGO + 3 : 0);
   doc.setDrawColor(228, 228, 231).setLineWidth(0.3).line(M, y, pageW - M, y);
 
   // ── título e data/hora em destaque ──

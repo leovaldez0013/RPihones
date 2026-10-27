@@ -47,7 +47,7 @@ export function StoreForm({ defaults }: { defaults: StoreInput }) {
           <FormField label="CNPJ" error={errors.cnpj?.message}>
             <Controller control={control} name="cnpj" render={({ field }) => <MaskedInput mask="cpfCnpj" {...field} />} />
           </FormField>
-          <FormField label="URL do logo" hint="Link de uma imagem (PNG/JPG). Ex.: /logo.png">
+          <FormField label="URL do logo" hint="Link de uma imagem (PNG/JPG). Vazio = logo padrão da loja (MD Imports).">
             <Input {...register("logoUrl")} placeholder="https://…" />
           </FormField>
         </CardContent>

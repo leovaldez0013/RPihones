@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
   // fotos e anexos vão direto do navegador para o Vercel Blob quando o token existe (produção)
   env: { NEXT_PUBLIC_BLOB_UPLOAD: process.env.BLOB_READ_WRITE_TOKEN ? "1" : "" },
   serverExternalPackages: ["@react-pdf/renderer", "exceljs", "bwip-js"],
+  // o PDF dos documentos lê o logo do disco; na Vercel a pasta public não vai junto às funções sem isto
+  outputFileTracingIncludes: { "/**": ["./public/brand/**"] },
   experimental: {
     serverActions: { bodySizeLimit: "10mb" }, // fotos e anexos
   },

@@ -8,6 +8,7 @@ import { simulateInstallments } from "@/domain/installments";
 import { warrantyUntil } from "@/domain/sale";
 import { DEVICE_CONDITION, ORDER_STATUS, PAYMENT_METHOD, SO_PRIORITY, TRADE_IN_CHECKLIST } from "@/domain/constants";
 import { formatCEP, formatCPF, formatDate, formatDocument, formatLongDate, formatPhone, imeiText } from "@/lib/format";
+import { storeLogo } from "@/lib/brand";
 import { getCardRules, getWarrantyDays } from "@/features/sales/config";
 
 export type DocCtx = Record<string, unknown>;
@@ -43,7 +44,7 @@ export async function storeContext(tx: Tx): Promise<DocCtx> {
       instagram: s?.instagram ?? "",
       email: s?.email ?? "",
       site: s?.website ?? "",
-      logo: s?.logoUrl ?? "",
+      logo: storeLogo(s?.logoUrl),
     },
     data_hoje: formatDate(new Date()),
     data_hoje_extenso: formatLongDate(new Date()),

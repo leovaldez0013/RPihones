@@ -79,7 +79,8 @@ describe("Lista para atacado", () => {
     );
     const rows = groupWholesale(devices);
     const now = new Date("2026-10-27T17:05:00Z");
-    const { doc, fileName } = await buildWholesalePdf(rows, { store: { name: "RP iPhones", phone: "1133334444", whatsapp: "11988887777" }, showPrice: true, now });
+    const logo = `data:image/jpeg;base64,${(await import("node:fs")).readFileSync("public/brand/logo.jpg").toString("base64")}`;
+    const { doc, fileName } = await buildWholesalePdf(rows, { store: { name: "RP iPhones", phone: "1133334444", whatsapp: "11988887777", logo }, showPrice: true, now });
     expect(fileName).toBe("estoque-atacado-2026-10-27-1405.pdf");
     const pages = doc.getNumberOfPages();
     expect(pages).toBeGreaterThanOrEqual(2);

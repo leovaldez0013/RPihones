@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Smartphone } from "lucide-react";
+import { storeLogo } from "@/lib/brand";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getUser } from "@/lib/session";
@@ -17,9 +17,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(60rem_30rem_at_50%_-10%,color-mix(in_oklch,var(--primary)_14%,transparent),transparent)]" />
       <div className="relative w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
-          <div className="flex size-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/25">
-            <Smartphone className="size-7" />
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element -- logo pode ser link externo configurado na loja */}
+          <img src={storeLogo(store?.logoUrl)} alt={store?.name ?? "Logo"} className="size-24 rounded-full bg-black object-cover shadow-lg shadow-primary/25" />
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">{store?.name ?? "RP iPhones"}</h1>
             <p className="text-sm text-muted-foreground">Entre para acessar o sistema de gestão</p>
