@@ -232,6 +232,7 @@ model Device {
   acquisitionCost    Int         @default(0)
   serviceCost        Int         @default(0) // soma das OS internas
   salePrice          Int         @default(0)
+  wholesalePrice     Int? // preço para lojistas (lista de atacado); vazio = usa o preço de venda
   entryDate          DateTime    @default(now())
   appleWarrantyUntil DateTime?
   status             String      @default("DISPONIVEL") // DISPONIVEL | RESERVADO | VENDIDO | EM_MANUTENCAO | EM_AVALIACAO | DEVOLVIDO

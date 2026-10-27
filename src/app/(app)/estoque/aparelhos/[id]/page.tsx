@@ -202,6 +202,10 @@ export default async function DevicePage({ params }: { params: Promise<{ id: str
                 <span className="text-muted-foreground">Preço de venda</span>
                 <span className="text-2xl font-semibold tabular">{formatBRL(d.salePrice)}</span>
               </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Valor atacado</span>
+                <span className="tabular">{d.wholesalePrice ? formatBRL(d.wholesalePrice) : <span className="text-muted-foreground">= preço de venda</span>}</span>
+              </div>
               {d.showCost && (
                 <>
                   <div className="flex justify-between">

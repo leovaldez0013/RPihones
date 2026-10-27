@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PackagePlus } from "lucide-react";
+import { FileDown, PackagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shared/page-header";
 import { requirePage } from "@/lib/session";
@@ -24,13 +24,20 @@ export default async function DevicesPage({ searchParams }: { searchParams: Prom
         title="Aparelhos"
         description="Estoque de iPhones controlado por IMEI."
         actions={
-          can(user.role, "devices.edit") && (
-            <Button asChild size="lg">
-              <Link href="/estoque/aparelhos/novo">
-                <PackagePlus /> Entrada de aparelho
+          <>
+            <Button asChild size="lg" variant="outline">
+              <Link href="/estoque/aparelhos/atacado">
+                <FileDown /> Gerar PDF Atacado
               </Link>
             </Button>
-          )
+            {can(user.role, "devices.edit") && (
+              <Button asChild size="lg">
+                <Link href="/estoque/aparelhos/novo">
+                  <PackagePlus /> Entrada de aparelho
+                </Link>
+              </Button>
+            )}
+          </>
         }
       />
       <DevicesTable

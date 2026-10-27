@@ -38,6 +38,7 @@ export default async function EditDevicePage({ params }: { params: Promise<{ id:
     supplierId: d.supplierId ?? "",
     acquisitionCost: d.acquisitionCost,
     salePrice: d.salePrice,
+    wholesalePrice: d.wholesalePrice ?? 0,
     entryDate: ymd(d.entryDate),
     appleWarrantyUntil: ymd(d.appleWarrantyUntil),
     status: d.status as DeviceInput["status"],

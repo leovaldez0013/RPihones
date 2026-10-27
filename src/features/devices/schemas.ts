@@ -45,6 +45,11 @@ export const deviceSchema = z.object({
   supplierId: optionalString,
   acquisitionCost: zCents,
   salePrice: zCents,
+  /** preço de atacado; 0 ou vazio = usa o preço de venda */
+  wholesalePrice: zCents
+    .nullable()
+    .transform((v) => v || null)
+    .optional(),
   entryDate: zDate,
   appleWarrantyUntil: zDate,
   status: z.enum(DEVICE_STATUS.values).default("DISPONIVEL"),

@@ -51,6 +51,7 @@ export function DeviceForm({
       supplierId: "",
       acquisitionCost: 0,
       salePrice: 0,
+      wholesalePrice: 0,
       entryDate: new Date().toISOString().slice(0, 10),
       appleWarrantyUntil: "",
       status: "DISPONIVEL",
@@ -232,6 +233,9 @@ export function DeviceForm({
             </FormField>
             <FormField label="Preço de venda sugerido" error={errors.salePrice?.message}>
               <Controller control={control} name="salePrice" render={({ field }) => <MoneyInput value={Number(field.value)} onChange={field.onChange} />} />
+            </FormField>
+            <FormField label="Valor atacado" hint="Preço para lojistas. Vazio = usa o preço de venda." error={errors.wholesalePrice?.message}>
+              <Controller control={control} name="wholesalePrice" render={({ field }) => <MoneyInput value={Number(field.value ?? 0)} onChange={field.onChange} />} />
             </FormField>
             <div className="rounded-xl bg-muted/60 p-3 text-sm">
               <div className="flex justify-between">

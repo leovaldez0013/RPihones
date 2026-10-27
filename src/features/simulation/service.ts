@@ -297,6 +297,8 @@ export async function generateSimulation(user: { id: string; name: string; role:
       supplierId: r.pick(suppliers).id,
       acquisitionCost,
       salePrice,
+      // ~70% com preço de atacado entre o custo e o varejo; os demais usam o preço de venda na lista
+      wholesalePrice: r.chance(0.7) ? Math.round((acquisitionCost + ((salePrice - acquisitionCost) * r.int(40, 60)) / 100) / 5000) * 5000 : 0,
       status: "DISPONIVEL",
     });
     const when = dayDate(entryDay);

@@ -44,5 +44,33 @@ const run = (cmd) => {
 };
 
 run(`npx prisma generate --schema ${out}`);
-if (!flag("no-push") && process.env.DB_PUSH_ON_BUILD !== "0") run(`npx prisma db push --skip-generate --schema ${out}`);
+if (!flag("no-push") && process.env.DB_PUSH_ON_BUILD !== "0") {
+  run(`npx prisma db push --skip-generate --schema ${out}`);
+  await syncSimulationSchema();
+}
 if (!flag("no-seed") && process.env.SEED_ON_BUILD !== "0") run("npx tsx prisma/seed/index.ts");
+
+/** Se há uma simulação guardada (schema "simulacao"), aplica nela as mesmas mudanças de estrutura. */
+async function syncSimulationSchema() {
+  const { PrismaClient } = await import("@prisma/client");
+  const client = new PrismaClient({ datasources: { db: { url: env.DATABASE_URL } } });
+  let exists = false;
+  try {
+    exists = (await client.$queryRawUnsafe("SELECT 1 FROM information_schema.schemata WHERE schema_name = 'simulacao'")).length > 0;
+  } finally {
+    await client.$disconnect();
+  }
+  if (!exists) return;
+  const withSchema = (raw) => {
+    const u = new URL(raw);
+    u.searchParams.set("schema", "simulacao");
+    return u.toString();
+  };
+  try {
+    console.log("[prepare-db] atualizando a estrutura da simulação guardada");
+    execSync(`npx prisma db push --skip-generate --schema ${out}`, { stdio: "inherit", env: { ...env, DATABASE_URL: withSchema(env.DATABASE_URL), DIRECT_URL: withSchema(env.DIRECT_URL) } });
+  } catch {
+    // não impede o deploy: os dados reais já estão em dia; basta gerar a simulação de novo
+    console.warn("[prepare-db] não foi possível atualizar a simulação guardada — gere uma nova em Simulação.");
+  }
+}
