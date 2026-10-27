@@ -104,3 +104,15 @@ describe("Lista para atacado", () => {
     expect(deviceSchema.parse({ ...base, wholesalePrice: 180000 }).wholesalePrice).toBe(180000);
   });
 });
+
+describe("Logo da loja", () => {
+  it("usa o logo configurado só quando é imagem; link de página cai no padrão", async () => {
+    const { storeLogo, DEFAULT_LOGO } = await import("@/lib/brand");
+    expect(storeLogo("")).toBe(DEFAULT_LOGO);
+    expect(storeLogo(null)).toBe(DEFAULT_LOGO);
+    expect(storeLogo("https://www.instagram.com/mdimports.fornecedor_/?hl=pt-br")).toBe(DEFAULT_LOGO);
+    expect(storeLogo("https://exemplo.com/logo.png")).toBe("https://exemplo.com/logo.png");
+    expect(storeLogo("https://abc.public.blob.vercel-storage.com/logo-x1")).toBe("https://abc.public.blob.vercel-storage.com/logo-x1");
+    expect(storeLogo("/uploads/logo.jpg")).toBe("/uploads/logo.jpg");
+  });
+});
